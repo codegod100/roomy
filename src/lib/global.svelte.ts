@@ -23,6 +23,22 @@ export let g = $state({
 
 (globalThis as any).g = g;
 
+export function updateNewMessages(dmId: string, newMessages: number) {
+  g.catalog?.change((doc) => {
+    if (doc.dms[dmId]) {
+      if (doc.dms[dmId]) {
+        if(newMessages == 0){
+          doc.dms[dmId].newMessages = 0
+        } else {
+          doc.dms[dmId].newMessages = (doc.dms[dmId].newMessages || 0) + newMessages;
+        }
+      }
+    }
+    // const key = Object.keys(doc.dms)[0]
+    // doc.dms[key].newMessages = 15;
+  });
+}
+
 $effect.root(() => {
   // Update catalog
   $effect(() => {
@@ -116,6 +132,10 @@ $effect.root(() => {
               console.log("message for did", did, connId);
               const { docId, data } = parseRouterSyncMsg(msg);
               if (docId == "dm") {
+                const tabDid = globalThis.location.href.split("/")[4]
+                if(tabDid != did){
+                  updateNewMessages(did, 1)
+                }
                 const doc = g.dms[did];
                 const manager = g.syncManagers.dms[did][connId];
                 console.log(manager);

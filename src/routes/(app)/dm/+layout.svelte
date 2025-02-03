@@ -5,7 +5,7 @@
   import { page } from "$app/state";
   import { goto } from "$app/navigation";
   import { fade } from "svelte/transition";
-  import { g } from "$lib/global.svelte";
+  import { g, updateNewMessages } from "$lib/global.svelte";
   import { user } from "$lib/user.svelte";
   import { AvatarBeam } from "svelte-boring-avatars";
   import { onMount } from "svelte";
@@ -17,6 +17,7 @@
       id: did,
       name: dm.name,
       avatar: dm.avatar,
+      newMessages: dm.newMessages || 0, // Add newMessages state
     })),
   );
 
@@ -49,6 +50,7 @@
         doc.dms[resp.data.did] = {
           name: newDmInput,
           avatar: profile.data.avatar,
+          newMessages: 0, // Initialize newMessages to 0
         };
       });
 
@@ -132,7 +134,10 @@
   >
     {#each dms as dm}
       <ToggleGroup.Item
-        onclick={() => goto(`/dm/${dm.id || ""}`)}
+        onclick={() => {
+          updateNewMessages(dm.id,0)
+          goto(`/dm/${dm.id || ""}`);
+        }}
         value={dm.id}
         class={`${(g.routerConnections[dm.id] || []).length > 0 ? "online" : ""} flex gap-4 items-center w-full text-start hover:scale-105 transition-all duration-150 active:scale-95 hover:bg-white/5 border border-transparent data-[state=on]:border-white data-[state=on]:scale-98 data-[state=on]:bg-white/5 text-white px-4 py-2 rounded-md`}
       >
@@ -143,6 +148,11 @@
           </Avatar.Fallback>
         </Avatar.Root>
         <h3>{dm.name}</h3>
+        {#if dm.newMessages > 0}
+          <span class="bg-red-500 text-white px-2 py-1 rounded-full"
+            >{dm.newMessages}</span
+          >
+        {/if}
       </ToggleGroup.Item>
     {/each}
   </ToggleGroup.Root>
