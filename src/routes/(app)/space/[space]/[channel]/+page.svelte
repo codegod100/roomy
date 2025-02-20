@@ -26,8 +26,38 @@
   import { renderMarkdownSanitized } from "$lib/markdown";
   import { outerWidth } from "svelte/reactivity/window";
   import AvatarImage from "$lib/components/AvatarImage.svelte";
+  import VideoChat from "$lib/components/VideoChat.svelte";
+  import { createEventDispatcher } from "svelte";
 
   let isMobile = $derived((outerWidth.current ?? 0) < 640);
+
+  // State for video chat
+  let showVideoChat = $state(false);
+  let videoLayout = $state<"sidebar" | "fullscreen">("sidebar");
+  let participantStreams = $state<Map<string, MediaStream>>(new Map());
+
+  // Track active speakers
+  let activeSpeakers = $state<Set<string>>(new Set());
+
+  // Function to handle new participant joining video
+  function handleParticipantJoin(
+    event: CustomEvent<{ did: string; stream: MediaStream }>,
+  ) {
+    const { did, stream } = event.detail;
+    participantStreams.set(did, stream);
+  }
+
+  // Function to handle participant leaving
+  function handleParticipantLeave(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    participantStreams.delete(did);
+    activeSpeakers.delete(did);
+  }
+
+  // Function to toggle video chat layout
+  function toggleVideoLayout() {
+    videoLayout = videoLayout === "sidebar" ? "fullscreen" : "sidebar";
+  }
 
   let tab = $state("chat");
   let space: Autodoc<Space> | undefined = $derived(g.spaces[page.params.space]);
@@ -97,7 +127,11 @@
       profile: { handle: string; avatarUrl: string };
       content: string;
     }) => {
-      replyingTo = value;
+      replyingTo = {
+        id: value.id,
+        authorProfile: value.profile,
+        content: value.content
+      };
     },
   );
 
@@ -294,6 +328,35 @@
       }
     }
   }
+
+  let videoRef: VideoChat | undefined = $state();
+  let connectedPeers = $state<Set<string>>(new Set());
+
+  // Function to handle signaling message
+  function sendSignalingMessage(targetPeerId: string, message: any) {
+    if (!user.agent) return;
+    
+    // Send message directly to peer through your preferred transport
+    // This could be WebSocket, REST API, etc.
+    console.log('Sending signal to peer:', targetPeerId, message);
+    
+    // For now, we'll simulate the message delivery locally
+    // In production, replace this with actual message delivery
+    if (videoRef) {
+      videoRef.handleSignalingMessage(targetPeerId, message);
+    }
+  }
+
+  // Update UI when peers connect/disconnect
+  function handlePeerConnect(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    connectedPeers.add(did);
+  }
+
+  function handlePeerDisconnect(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    connectedPeers.delete(did);
+  }
 </script>
 
 <header class="flex flex-none items-center justify-between border-b-1 pb-4">
@@ -361,6 +424,36 @@
     </div>
   {/if}
 </header>
+
+{#if showVideoChat}
+  <div class={`video-chat-container ${videoLayout}`}>
+    <div class="absolute top-2 left-2 z-20 flex gap-2 items-center bg-black/50 px-3 py-1 rounded-full">
+      <span class="text-white text-sm">Connected peers: {connectedPeers.size}</span>
+      {#each [...connectedPeers] as peerId}
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+      {/each}
+    </div>
+    <button 
+      class="absolute top-2 right-2 z-20 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors duration-150"
+      onclick={() => {
+        showVideoChat = false;
+        connectedPeers.clear();
+        videoRef?.stopLocalStream();
+      }}
+    >
+      <Icon icon="zondicons:close-solid" color="white" />
+    </button>
+    <VideoChat 
+      bind:this={videoRef}
+      peerId={user.agent?.did ?? ''} 
+      on:participantJoin={handleParticipantJoin}
+      on:participantLeave={handleParticipantLeave}
+      on:peerConnect={handlePeerConnect}
+      on:peerDisconnect={handlePeerDisconnect}
+      {sendSignalingMessage}
+    />
+  </div>
+{/if}
 
 {#if tab === "chat"}
   {@render chatTab()}
@@ -595,6 +688,31 @@
       <Icon icon="icon-park-outline:copy-link" color="white" class="text-2xl" />
     </Button.Root>
 
+    <Toggle.Root
+      bind:pressed={showVideoChat}
+      class={`p-2 ${showVideoChat && "bg-white/10"} cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150 rounded`}
+    >
+      <Icon
+        icon="tabler:video"
+        color="white"
+        class="text-2xl"
+      />
+    </Toggle.Root>
+
+    {#if showVideoChat}
+      <Button.Root
+        title="Toggle video layout"
+        class="cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150"
+        onclick={toggleVideoLayout}
+      >
+        <Icon 
+          icon={videoLayout === "sidebar" ? "tabler:layout-sidebar" : "tabler:layout-grid"} 
+          color="white" 
+          class="text-2xl" 
+        />
+      </Button.Root>
+    {/if}
+
     {#if isAdmin}
       <Dialog title="Channel Settings" bind:isDialogOpen={showSettingsDialog}>
         {#snippet dialogTrigger()}
@@ -638,3 +756,109 @@
     {/if}
   </menu>
 {/snippet}
+
+<style>
+  .video-chat-container {
+    position: relative;
+    z-index: 10;
+    background: rgba(0, 0, 0, 0.85);
+    border-radius: 0.75rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+  }
+
+  .video-chat-container.sidebar {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 320px;
+    height: 240px;
+    transition: all 0.3s ease;
+  }
+
+  .video-chat-container.sidebar:hover {
+    transform: scale(1.02);
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  }
+
+  .video-chat-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 2rem;
+  }
+
+  .video-chat-container.fullscreen :global(video) {
+    max-width: 90vw;
+    max-height: 90vh;
+    border-radius: 1rem;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  }
+
+  .video-chat-container :global(.local-video) {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    width: 120px;
+    height: 90px;
+    border-radius: 0.5rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    z-index: 2;
+  }
+
+  .video-chat-container :global(.remote-video) {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+
+  .video-chat-container button {
+    opacity: 0.8;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(4px);
+  }
+
+  .video-chat-container button:hover {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+
+  .video-chat-container :global(.video-controls) {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.5rem;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    border-radius: 2rem;
+    z-index: 3;
+  }
+
+  .video-chat-container :global(.video-controls button) {
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .video-chat-container :global(.video-controls button:hover) {
+    background: rgba(255, 255, 255, 0.2);
+  }
+
+  .video-chat-container :global(.video-controls button.disabled) {
+    background: rgba(255, 0, 0, 0.2);
+    border-color: rgba(255, 0, 0, 0.3);
+  }
+</style>
