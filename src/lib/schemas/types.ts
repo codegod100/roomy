@@ -55,15 +55,45 @@ export type Channel = {
   messages: { [ulid: Ulid]: Message };
   threads: { [ulid: Ulid]: Thread };
   timeline: Ulid[];
+  videoSignaling?: {
+    [peerId: string]: {
+      type: "offer" | "answer" | "candidate";
+      data: any;
+      timestamp: number;
+    }[];
+  };
+};
+
+export type SessionDescription = {
+  type: "offer" | "answer" | "pranswer" | "rollback";
+  sdp: string;
+};
+
+export type IceCandidate = {
+  candidate: string;
+  sdpMid: string | null;
+  sdpMLineIndex: number | null;
+  usernameFragment: string | null;
+};
+
+export type SignalingMessage = {
+  type: "offer" | "answer" | "candidate";
+  data: SessionDescription | IceCandidate;
+  timestamp: number;
 };
 
 export type SpaceChannel = {
   name: string;
-  description?: string;
-  avatar?: string;
-  threads: Ulid[];
+  description: string;
+  messages: { [ulid: Ulid]: Message };
+  threads: { [ulid: Ulid]: Thread };
   timeline: Ulid[];
+  avatar?: string;
+  videoSignaling?: {
+    [peerId: string]: SignalingMessage[];
+  };
 };
+
 export type SpaceCategory = {
   name: string;
   channels: Ulid[];
