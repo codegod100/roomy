@@ -352,6 +352,19 @@
           <p>Threads</p>
         {/if}
       </Tabs.Trigger>
+      <Tabs.Trigger
+        value="video"
+        class="flex gap-2 w-full justify-center transition-all duration-150 items-center px-4 py-1 data-[state=active]:bg-violet-800 rounded"
+      >
+        <Icon
+          icon="mdi:video"
+          color="white"
+          class="text-2xl"
+        />
+        {#if !isMobile}
+          <p>Video</p>
+        {/if}
+      </Tabs.Trigger>
     </Tabs.List>
   </Tabs.Root>
 
@@ -366,6 +379,8 @@
   {@render chatTab()}
 {:else if tab === "threads"}
   {@render threadsTab()}
+{:else if tab === "video"}
+  {@render videoTab()}
 {/if}
 
 {#snippet chatTab()}
@@ -535,6 +550,25 @@
   {/if}
 {/snippet}
 
+{#snippet videoTab()}
+  <div class="flex flex-col h-full">
+    <menu class="px-4 py-2 flex w-full justify-between">
+      <Button.Root
+        onclick={() => tab = "chat"}
+        class="flex gap-2 items-center text-white cursor-pointer hover:scale-105 transition-all duration-150"
+      >
+        <Icon icon="uil:left" />
+        Back to Chat
+      </Button.Root>
+    </menu>
+    <iframe
+      allow="camera; microphone; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay"
+      src={`https://p2p.mirotalk.com/${page.params.channel}`}
+      class="flex-1 rounded-lg border-0"
+    ></iframe>
+  </div>
+{/snippet}
+
 {#snippet toolbar({ growButton = false }: { growButton: boolean })}
   {#if isThreading.value}
     <div in:fly class={`${growButton && "grow w-full pr-2"}`}>
@@ -585,6 +619,13 @@
         class="text-2xl"
       />
     </Toggle.Root>
+    <Button.Root
+      title="Start Video Call"
+      class="cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150"
+      onclick={() => tab = "video"}
+    >
+      <Icon icon="mdi:video" color="white" class="text-2xl" />
+    </Button.Root>
     <Button.Root
       title="Copy invite link"
       class="cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150"
