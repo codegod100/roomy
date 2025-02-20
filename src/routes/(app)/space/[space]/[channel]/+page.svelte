@@ -294,6 +294,9 @@
       }
     }
   }
+
+  // Add state for video visibility
+  let showVideo = $state(false);
 </script>
 
 <header class="flex flex-none items-center justify-between border-b-1 pb-4">
@@ -362,6 +365,24 @@
   {/if}
 </header>
 
+{#if showVideo}
+  <div class="flex flex-col h-full gap-4">
+    <div class="h-[35%]">
+      <iframe
+        allow="camera; microphone; display-capture; fullscreen; clipboard-read; clipboard-write; web-share; autoplay"
+        src={`https://p2p.mirotalk.com/${page.params.channel}`}
+        class="w-full h-full rounded-lg border-0 bg-violet-900"
+      ></iframe>
+    </div>
+    <div class="h-[65%] flex flex-col overflow-hidden">
+      {#if tab === "chat"}
+        {@render chatTab()}
+      {:else if tab === "threads"}
+        {@render threadsTab()}
+      {/if}
+    </div>
+  </div>
+{/if}
 {#if tab === "chat"}
   {@render chatTab()}
 {:else if tab === "threads"}
@@ -584,6 +605,12 @@
         color={tab !== "chat" ? "gray" : "white"}
         class="text-2xl"
       />
+    </Toggle.Root>
+    <Toggle.Root
+      bind:pressed={showVideo}
+      class={`p-2 ${showVideo && "bg-white/10"} cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150 rounded`}
+    >
+      <Icon icon="mdi:video" color="white" class="text-2xl" />
     </Toggle.Root>
     <Button.Root
       title="Copy invite link"
