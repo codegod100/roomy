@@ -26,8 +26,38 @@
   import { renderMarkdownSanitized } from "$lib/markdown";
   import { outerWidth } from "svelte/reactivity/window";
   import AvatarImage from "$lib/components/AvatarImage.svelte";
+  import VideoChat from "$lib/components/VideoChat.svelte";
+  import { createEventDispatcher } from "svelte";
 
   let isMobile = $derived((outerWidth.current ?? 0) < 640);
+
+  // State for video chat
+  let showVideoChat = $state(false);
+  let videoLayout = $state<"sidebar" | "fullscreen">("sidebar");
+  let participantStreams = $state<Map<string, MediaStream>>(new Map());
+
+  // Track active speakers
+  let activeSpeakers = $state<Set<string>>(new Set());
+
+  // Function to handle new participant joining video
+  function handleParticipantJoin(
+    event: CustomEvent<{ did: string; stream: MediaStream }>,
+  ) {
+    const { did, stream } = event.detail;
+    participantStreams.set(did, stream);
+  }
+
+  // Function to handle participant leaving
+  function handleParticipantLeave(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    participantStreams.delete(did);
+    activeSpeakers.delete(did);
+  }
+
+  // Function to toggle video chat layout
+  function toggleVideoLayout() {
+    videoLayout = videoLayout === "sidebar" ? "fullscreen" : "sidebar";
+  }
 
   let tab = $state("chat");
   let space: Autodoc<Space> | undefined = $derived(g.spaces[page.params.space]);
@@ -294,6 +324,63 @@
       }
     }
   }
+
+  let videoRef: VideoChat | undefined = $state();
+  let connectedPeers = $state<Set<string>>(new Set());
+
+  // Function to handle signaling messages
+  $effect(() => {
+    if (!space || !channel || !showVideoChat) return;
+
+    // Listen for video signaling messages in the channel
+    space.change((doc) => {
+      if (!doc.channels[page.params.channel].videoSignaling) {
+        doc.channels[page.params.channel].videoSignaling = {};
+      }
+    });
+
+    const cleanup = space.subscribe((doc) => {
+      const signaling = doc.channels[page.params.channel].videoSignaling;
+      if (!signaling) return;
+
+      // Process new signaling messages
+      Object.entries(signaling).forEach(([peerId, messages]) => {
+        messages.forEach(msg => {
+          if (msg.type === 'offer' || msg.type === 'answer' || msg.type === 'candidate') {
+            videoRef?.handleSignalingMessage(peerId, msg);
+          }
+        });
+      });
+    });
+
+    return cleanup;
+  });
+
+  // Function to send signaling message
+  function sendSignalingMessage(targetPeerId: string, message: any) {
+    if (!space || !user.agent) return;
+    
+    space.change((doc) => {
+      const signaling = doc.channels[page.params.channel].videoSignaling ??= {};
+      const messages = signaling[targetPeerId] ??= [];
+      messages.push({
+        type: message.type,
+        data: message.data,
+        timestamp: Date.now()
+      });
+    });
+  }
+
+  // Update UI when peers connect/disconnect
+  function handlePeerConnect(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    connectedPeers.add(did);
+  }
+
+  function handlePeerDisconnect(event: CustomEvent<{ did: string }>) {
+    const { did } = event.detail;
+    connectedPeers.delete(did);
+  }
 </script>
 
 <header class="flex flex-none items-center justify-between border-b-1 pb-4">
@@ -361,6 +448,38 @@
     </div>
   {/if}
 </header>
+
+{#if showVideoChat}
+  <div class={`video-chat-container ${videoLayout}`}>
+    <div class="absolute top-2 left-2 z-20 flex gap-2 items-center bg-black/50 px-3 py-1 rounded-full">
+      <span class="text-white text-sm">Connected peers: {connectedPeers.size}</span>
+      {#each [...connectedPeers] as peerId}
+        <div class="w-2 h-2 rounded-full bg-green-500"></div>
+      {/each}
+    </div>
+    <button 
+      class="absolute top-2 right-2 z-20 p-2 bg-red-500 hover:bg-red-600 rounded-full transition-colors duration-150"
+      onclick={() => {
+        showVideoChat = false;
+        participantStreams.clear();
+        activeSpeakers.clear();
+        connectedPeers.clear();
+        videoRef?.stopLocalStream();
+      }}
+    >
+      <Icon icon="zondicons:close-solid" color="white" />
+    </button>
+    <VideoChat 
+      bind:this={videoRef}
+      peerId={user.agent?.did ?? ''} 
+      on:participantJoin={handleParticipantJoin}
+      on:participantLeave={handleParticipantLeave}
+      on:peerConnect={handlePeerConnect}
+      on:peerDisconnect={handlePeerDisconnect}
+      {sendSignalingMessage}
+    />
+  </div>
+{/if}
 
 {#if tab === "chat"}
   {@render chatTab()}
@@ -595,6 +714,31 @@
       <Icon icon="icon-park-outline:copy-link" color="white" class="text-2xl" />
     </Button.Root>
 
+    <Toggle.Root
+      bind:pressed={showVideoChat}
+      class={`p-2 ${showVideoChat && "bg-white/10"} cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150 rounded`}
+    >
+      <Icon
+        icon="tabler:video"
+        color="white"
+        class="text-2xl"
+      />
+    </Toggle.Root>
+
+    {#if showVideoChat}
+      <Button.Root
+        title="Toggle video layout"
+        class="cursor-pointer hover:scale-105 active:scale-95 transition-all duration-150"
+        onclick={toggleVideoLayout}
+      >
+        <Icon 
+          icon={videoLayout === "sidebar" ? "tabler:layout-sidebar" : "tabler:layout-grid"} 
+          color="white" 
+          class="text-2xl" 
+        />
+      </Button.Root>
+    {/if}
+
     {#if isAdmin}
       <Dialog title="Channel Settings" bind:isDialogOpen={showSettingsDialog}>
         {#snippet dialogTrigger()}
@@ -638,3 +782,46 @@
     {/if}
   </menu>
 {/snippet}
+
+<style>
+  .video-chat-container {
+    position: relative;
+    z-index: 10;
+  }
+
+  .video-chat-container.sidebar {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    width: 300px;
+    height: 225px;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+
+  .video-chat-container.fullscreen {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+  }
+
+  .video-chat-container.fullscreen :global(video) {
+    max-width: 90vw;
+    max-height: 90vh;
+  }
+
+  .video-chat-container button {
+    opacity: 0.8;
+  }
+
+  .video-chat-container button:hover {
+    opacity: 1;
+  }
+</style>

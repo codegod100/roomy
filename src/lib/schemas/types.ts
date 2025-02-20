@@ -55,6 +55,13 @@ export type Channel = {
   messages: { [ulid: Ulid]: Message };
   threads: { [ulid: Ulid]: Thread };
   timeline: Ulid[];
+  videoSignaling?: {
+    [peerId: string]: {
+      type: "offer" | "answer" | "candidate";
+      data: any;
+      timestamp: number;
+    }[];
+  };
 };
 
 export type SpaceChannel = {
