@@ -27,39 +27,36 @@
     Image,
     Thread,
     Timeline,
+    TimelineItem,
   } from "@roomy-chat/sdk";
   import type { JSONContent } from "@tiptap/core";
   import { getProfile } from "$lib/profile.svelte";
   import WikiEditor from "./WikiEditor.svelte";
 
   // Calculate the latest activity time for a thread
-  function getLatestActivityTime(thread: any): Date {
-    if (!thread || !thread.timeline || !Array.isArray(thread.timeline)) {
-      return thread?.createdDate || new Date(0);
-    }
-
+  async function getLatestActivityTime(thread: Thread): Promise<Date> {
     try {
-      // Get all timeline item timestamps
-      const timelineTimestamps = thread.timeline
-        .filter((id: any) => typeof id === "string")
-        .map((id: string) => {
-          try {
-            return new Date(decodeTime(id));
-          } catch (e) {
-            return new Date(0);
-          }
-        });
+      const timelineItems = await thread.timeline.items();
 
-      // If no timeline items, use thread creation date
+      if (timelineItems.length === 0) {
+        // If no timeline items, return thread creation date or current date
+        return thread.createdDate || new Date();
+      }
+
+      // Map the items to timestamps
+      const timelineTimestamps = timelineItems
+        .filter((item) => item.updatedDate instanceof Date)
+        .map((item: TimelineItem) => item.updatedDate as Date);
+
       if (timelineTimestamps.length === 0) {
-        return thread.createdDate || new Date(0);
+        return thread.createdDate || new Date();
       }
 
       // Return the most recent timestamp
       return new Date(Math.max(...timelineTimestamps.map((d) => d.getTime())));
-    } catch (e) {
-      console.error("Error calculating latest activity time:", e);
-      return thread?.createdDate || new Date(0);
+    } catch (error) {
+      console.error("Error getting latest activity time:", error);
+      return thread.createdDate || new Date();
     }
   }
 
@@ -73,21 +70,25 @@
     try {
       const threads = await g.channel.threads.items();
 
-      // Sort threads by latest activity (newest first)
-      return threads.sort((a, b) => {
-        try {
-          const aLatest = getLatestActivityTime(a);
-          const bLatest = getLatestActivityTime(b);
+      // Get all the latest activity times first
+      const threadTimes = await Promise.all(
+        threads.map(async (thread) => {
+          try {
+            const latestTime = await getLatestActivityTime(thread);
+            return { thread, latestTime };
+          } catch (e) {
+            console.error("Error getting thread time:", e);
+            // Fall back to creation date if available
+            const fallbackTime = thread?.createdDate || new Date(0);
+            return { thread, latestTime: fallbackTime };
+          }
+        }),
+      );
 
-          return bLatest.getTime() - aLatest.getTime();
-        } catch (e) {
-          console.error("Error sorting threads:", e);
-          // Fall back to creation date if available
-          const aDate = a?.createdDate ? a.createdDate.getTime() : 0;
-          const bDate = b?.createdDate ? b.createdDate.getTime() : 0;
-          return bDate - aDate;
-        }
-      });
+      // Now sort with all data available (no awaits in the sort function)
+      return threadTimes
+        .sort((a, b) => b.latestTime.getTime() - a.latestTime.getTime())
+        .map((item) => item.thread);
     } catch (e) {
       console.error("Error loading threads:", e);
       return [];
@@ -125,7 +126,7 @@
 
   async function createThread(e: SubmitEvent) {
     e.preventDefault();
-    if (!g.space || !g.channel) return;
+    if (!g.space || !g.channel || !g.roomy) return;
 
     const thread = await g.roomy.create(Thread);
 
@@ -180,7 +181,7 @@
   }
 
   async function sendMessage() {
-    if (!g.space || !g.channel || !user.agent) return;
+    if (!g.space || !g.channel || !user.agent || !g.roomy) return;
 
     /* TODO: image upload refactor with tiptap
     const images = imageFiles
@@ -361,7 +362,7 @@
           <Icon icon="uil:left" />
         </Button.Root>
       {:else}
-        {#await g.channel.image && g.roomy.open(Image, g.channel.image) then image}
+        {#await g.channel.image && g.roomy && g.roomy.open(Image, g.channel.image) then image}
           <!-- TODO: We're using #key to recreate avatar image when channel changes since for some reason the
           avatarimage component doesn't re-render properly by itself.  -->
           {#key g.channel.id}
@@ -446,10 +447,12 @@
             <h3 class="card-title text-xl font-medium text-primary">
               {thread.name}
             </h3>
-            <!-- <div class="flex flex-col">
+            <div class="flex flex-col">
               <span class="text-xs text-secondary">Latest activity:</span>
-              {@render timestamp(getLatestActivityTime(thread))}
-            </div> -->
+              {#await getLatestActivityTime(thread) then latestTime}
+                {@render timestamp(latestTime)}
+              {/await}
+            </div>
           </li>
         </a>
       {/each}
@@ -503,7 +506,9 @@
           {/if}
           <div class="relative">
             <!-- TODO: get all users that has joined the server -->
-            {#if g.roomy.spaces.ids().includes(g.space.id)}
+            {#if g.roomy && g.space && g.roomy.spaces
+                .ids()
+                .includes(g.space.id)}
               <ChatInput
                 bind:content={messageInput}
                 users={users.value}
@@ -514,7 +519,7 @@
               <Button.Root
                 class="w-full btn"
                 onclick={() => {
-                  if (g.space) {
+                  if (g.space && g.roomy) {
                     g.roomy.spaces.push(g.space);
                     g.roomy.commit();
                   }
