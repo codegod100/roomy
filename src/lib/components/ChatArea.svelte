@@ -4,6 +4,7 @@
   import ChatMessage from "./ChatMessage.svelte";
   import { Virtualizer } from "virtua/svelte";
   import { setContext } from "svelte";
+  import { latestMessage } from "$lib/messages";
   import {
     Announcement,
     Message,
@@ -36,6 +37,12 @@
   let virtualizer: Virtualizer<string> | undefined = $state();
 
   $effect(() => {
+    console.log("new message", messages.value);
+    // Get last message
+    const lastMessage = messages.value[messages.value.length - 1];
+    if (lastMessage instanceof Message) {
+      latestMessage.set(lastMessage);
+    }
     page.route; // Scroll-to-end when route changes
     messages.value; // Scroll to end when message list changes.
     if (viewport) {

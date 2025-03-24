@@ -3,7 +3,7 @@
   import Dialog from "$lib/components/Dialog.svelte";
   import { Accordion, Button, ToggleGroup } from "bits-ui";
 
-  import { page } from "$app/state";
+  import { page, updated } from "$app/state";
   import { g } from "$lib/global.svelte";
   import { goto } from "$app/navigation";
   import { outerWidth } from "svelte/reactivity/window";
@@ -14,6 +14,8 @@
   import { getProfile } from "$lib/profile.svelte";
   import { derivePromise } from "$lib/utils.svelte";
   import { Category, Channel, Message } from "@roomy-chat/sdk";
+  import { latestMessage } from "$lib/messages";
+  import type { Thread } from "@roomy-chat/sdk";
 
   let { children } = $props();
   let isMobile = $derived((outerWidth.current || 0) < 640);
@@ -46,9 +48,49 @@
     return items;
   });
 
-  let availableThreads = derivePromise([], async () =>
-    ((await g.space?.threads.items()) || []).filter((x) => !x.softDeleted),
-  );
+  // Calculate the latest activity time for a thread
+  async function getLatestActivityTime(thread: Thread): Promise<Date> {
+    const timelineItems = await thread.timeline.items();
+    // Force reactive update when timeline changes by accessing items here
+    timelineItems.length;
+
+    if (timelineItems.length === 0) {
+      return thread.createdDate || new Date();
+    }
+
+    const timelineTimestamps = timelineItems
+      .filter((item) => item.createdDate)
+      .map((item) => item.createdDate);
+
+    if (timelineTimestamps.length === 0) {
+      return thread.createdDate || new Date();
+    }
+
+    return new Date(Math.max(...timelineTimestamps.map((d) => d.getTime())));
+  }
+
+  // Use an empty dependency array and handle space check inside
+  let availableThreads = derivePromise([], async () => {
+    console.log(
+      "Regenerating available threads, latest message:",
+      $latestMessage?.id,
+    );
+    if (!g.space) return [];
+    const threads = (await g.space.threads.items()) || [];
+    const filtered = threads.filter((x) => !x.softDeleted);
+
+    const threadTimes = await Promise.all(
+      filtered.map(async (thread) => {
+        const latestTime = await getLatestActivityTime(thread);
+
+        return { thread, latestTime };
+      }),
+    );
+
+    return threadTimes
+      .sort((a, b) => b.latestTime.getTime() - a.latestTime.getTime())
+      .map((item) => item.thread);
+  });
 
   let categories = derivePromise([], async () => {
     if (!g.space) return [];
@@ -108,7 +150,7 @@
   let showNewCategoryDialog = $state(false);
   let newCategoryName = $state("");
   async function createCategory() {
-    if (!g.space) return;
+    if (!g.space || !g.roomy) return;
 
     const category = await g.roomy.create(Category);
     category.name = newCategoryName;
@@ -124,7 +166,7 @@
   let newChannelName = $state("");
   let newChannelCategory = $state(undefined) as undefined | Category;
   async function createChannel() {
-    if (!g.space) return;
+    if (!g.space || !g.roomy) return;
     const channel = await g.roomy.create(Channel);
     channel.appendAdminsFrom(g.space);
     channel.name = newChannelName;
@@ -364,13 +406,7 @@
             </Accordion.Header>
 
             <Accordion.Content forceMount>
-              {#snippet child({
-                props,
-                open,
-              }: {
-                open: boolean;
-                props: unknown[];
-              })}
+              {#snippet child({ open, props })}
                 {#if open}
                   <div
                     {...props}
@@ -386,11 +422,13 @@
                       >
                         <h3 class="flex justify-start items-center gap-2 px-2">
                           <Icon icon="basil:comment-solid" />
-                          {#await g.roomy.open(Channel, channelId)}
-                            ...
-                          {:then channel}
-                            {channel.name}
-                          {/await}
+                          {#if g.roomy}
+                            {#await g.roomy.open(Channel, channelId)}
+                              ...
+                            {:then channel}
+                              {channel.name}
+                            {/await}
+                          {/if}
                         </h3>
                       </ToggleGroup.Item>
                     {/each}
