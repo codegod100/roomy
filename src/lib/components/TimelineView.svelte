@@ -7,6 +7,7 @@
   import { user } from "$lib/user.svelte";
   import { getContentHtml, type Item } from "$lib/tiptap/editor";
   import { outerWidth } from "svelte/reactivity/window";
+  import { decodeTime } from "ulidx";
 
   import Icon from "@iconify/svelte";
   import Dialog from "$lib/components/Dialog.svelte";
@@ -31,15 +32,67 @@
   import { getProfile } from "$lib/profile.svelte";
   import WikiEditor from "./WikiEditor.svelte";
 
+  // Calculate the latest activity time for a thread
+  function getLatestActivityTime(thread: any): Date {
+    if (!thread || !thread.timeline || !Array.isArray(thread.timeline)) {
+      return thread?.createdDate || new Date(0);
+    }
+
+    try {
+      // Get all timeline item timestamps
+      const timelineTimestamps = thread.timeline
+        .filter((id: any) => typeof id === "string")
+        .map((id: string) => {
+          try {
+            return new Date(decodeTime(id));
+          } catch (e) {
+            return new Date(0);
+          }
+        });
+
+      // If no timeline items, use thread creation date
+      if (timelineTimestamps.length === 0) {
+        return thread.createdDate || new Date(0);
+      }
+
+      // Return the most recent timestamp
+      return new Date(Math.max(...timelineTimestamps.map((d) => d.getTime())));
+    } catch (e) {
+      console.error("Error calculating latest activity time:", e);
+      return thread?.createdDate || new Date(0);
+    }
+  }
+
   let isMobile = $derived((outerWidth.current ?? 0) < 640);
 
   let users: { value: Item[] } = getContext("users");
   let contextItems: { value: Item[] } = getContext("contextItems");
-  let relatedThreads = derivePromise([], async () =>
-    g.channel && g.channel instanceof Channel
-      ? await g.channel.threads.items()
-      : [],
-  );
+  let relatedThreads = derivePromise([], async () => {
+    if (!(g.channel && g.channel instanceof Channel)) return [];
+
+    try {
+      const threads = await g.channel.threads.items();
+
+      // Sort threads by latest activity (newest first)
+      return threads.sort((a, b) => {
+        try {
+          const aLatest = getLatestActivityTime(a);
+          const bLatest = getLatestActivityTime(b);
+
+          return bLatest.getTime() - aLatest.getTime();
+        } catch (e) {
+          console.error("Error sorting threads:", e);
+          // Fall back to creation date if available
+          const aDate = a?.createdDate ? a.createdDate.getTime() : 0;
+          const bDate = b?.createdDate ? b.createdDate.getTime() : 0;
+          return bDate - aDate;
+        }
+      });
+    } catch (e) {
+      console.error("Error loading threads:", e);
+      return [];
+    }
+  });
 
   let tab = $state<"chat" | "threads" | "wiki">("chat");
 
@@ -393,9 +446,10 @@
             <h3 class="card-title text-xl font-medium text-primary">
               {thread.name}
             </h3>
-            {#if thread.createdDate}
-              {@render timestamp(thread.createdDate)}
-            {/if}
+            <!-- <div class="flex flex-col">
+              <span class="text-xs text-secondary">Latest activity:</span>
+              {@render timestamp(getLatestActivityTime(thread))}
+            </div> -->
           </li>
         </a>
       {/each}

@@ -28,7 +28,10 @@
   let newSpaceName = $state("");
   let isNewSpaceDialogOpen = $state(false);
 
-  let spaces = derivePromise([], async () => (await g.roomy?.spaces.items()) || []);
+  let spaces = derivePromise(
+    [],
+    async () => (await g.roomy?.spaces.items()) || [],
+  );
 
   onMount(async () => {
     await user.init();
@@ -101,7 +104,7 @@
 
       {#each spaces.value as space}
         <ToggleGroup.Item
-          onclick={() => goto(`/${space.handles.get(0) || space.id}`)}
+          onclick={() => goto(`/${space.handles?.get?.(0) || space.id}`)}
           value={space.id}
           title={space.name}
           class="btn btn-ghost size-16 data-[state=on]:border-primary"

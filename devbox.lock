@@ -43,6 +43,62 @@
           "store_path": "/nix/store/ppw9fcqm64a67pani97kd2583xi9hhnf-jujutsu-0.26.0"
         }
       }
+    },
+    "killall@latest": {
+      "last_modified": "2025-03-11T17:52:14Z",
+      "resolved": "github:NixOS/nixpkgs/0d534853a55b5d02a4ababa1d71921ce8f0aee4c#killall",
+      "source": "devbox-search",
+      "version": "319.0.1",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/99c1w3lqykm3zd2vn7g1yc8gm3n30fd1-killall-shell_cmds-319.0.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/99c1w3lqykm3zd2vn7g1yc8gm3n30fd1-killall-shell_cmds-319.0.1"
+        },
+        "x86_64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/nv3xn3wd874yf4jrhxiyhp3516jqknz1-killall-shell_cmds-319.0.1",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/nv3xn3wd874yf4jrhxiyhp3516jqknz1-killall-shell_cmds-319.0.1"
+        }
+      }
+    },
+    "ps@latest": {
+      "last_modified": "2025-03-11T17:52:14Z",
+      "resolved": "github:NixOS/nixpkgs/0d534853a55b5d02a4ababa1d71921ce8f0aee4c#ps",
+      "source": "devbox-search",
+      "version": "4.0.4",
+      "systems": {
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/57r3mxbhkqf2gk74jdnnrwh0093qp98y-ps-procps-4.0.4",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/57r3mxbhkqf2gk74jdnnrwh0093qp98y-ps-procps-4.0.4"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/gp78y14kkyw78pvgcb4hq6g9ixvn0m59-ps-procps-4.0.4",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/gp78y14kkyw78pvgcb4hq6g9ixvn0m59-ps-procps-4.0.4"
+        }
+      }
     }
   }
 }
