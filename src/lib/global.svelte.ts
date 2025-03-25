@@ -1,16 +1,19 @@
 import {
+  Announcement,
   Channel,
   EntityId,
   type EntityIdStr,
+  Message,
   Roomy,
   Space,
   Thread,
+  Timeline,
 } from "@roomy-chat/sdk";
 import { StorageManager } from "@muni-town/leaf/storage";
 import { SveltePeer } from "@muni-town/leaf/svelte";
 import { indexedDBStorageAdapter } from "@muni-town/leaf/storage/indexed-db";
 import { webSocketSyncer } from "@muni-town/leaf/sync1/ws-client";
-
+import ProxyWebSocket from "./proxy-websocket";
 import { user } from "./user.svelte";
 import type { Agent } from "@atproto/api";
 import { page } from "$app/state";
@@ -18,6 +21,8 @@ import { goto } from "$app/navigation";
 import { untrack } from "svelte";
 
 import * as roomy from "@roomy-chat/sdk";
+import { setCustomIconsLoader } from "@iconify/svelte";
+import { derivePromise } from "./utils.svelte";
 (window as any).r = roomy;
 
 // Reload app when this module changes to prevent accumulated connections.
@@ -109,6 +114,7 @@ $effect.root(() => {
     if (!g.roomy) return;
 
     if (g.space && page.params.channel) {
+      
       try {
         g.roomy
           .open(Channel, page.params.channel as EntityIdStr)
@@ -133,6 +139,17 @@ $effect.root(() => {
 
   $effect(() => {
     if (g.space && user.agent) {
+      console.log("ROOMY SPACE", g.space)
+      // for(const channel of Object.values(g.space.channels)){
+      //   const timeline = channel.forceCast(Timeline)
+      //   const messages = derivePromise([], async () =>
+      //     (await timeline.timeline.items())
+      //       .map((x) => x.tryCast(Message) || x.tryCast(Announcement))
+      //       .filter((x) => !!x),
+      //   );
+      //   console.log("messages", messages)
+
+      // }
       g.isAdmin = g.space.admins.toArray().includes(user.agent.assertDid);
     } else {
       g.isAdmin = false;
@@ -162,19 +179,22 @@ async function initRoomy(agent: Agent): Promise<Roomy> {
   const token = resp.data.token as string;
 
   // Open router client
-  const websocket = new WebSocket(
+  console.log("initRoomy: creating ProxyWebSocket");
+  // Open router client
+  const websocket = new ProxyWebSocket(
     `wss://syncserver.roomy.chat/sync/as/${agent.assertDid}`,
-    ["authorization", token],
+    ["authorization", token]
   );
 
-  // Use this instead of you want to test with a local development Leaf syncserver.
-  // const websocket = new WebSocket("ws://127.0.0.1:8095");
+  if (websocket.readyState != WebSocket.OPEN) {
+    await new Promise((resolve) => websocket.addEventListener("open", resolve));
+  }
 
   const peer = new SveltePeer(
     new StorageManager(
-      indexedDBStorageAdapter("roomy-01JQ0EP4SMJW9D58JXMV9E1CF2"),
+      indexedDBStorageAdapter("roomy-01JQ0EP4SMJW9D58JXMV9E1CF2")
     ),
-    await webSocketSyncer(websocket),
+    await webSocketSyncer(websocket)
   );
 
   return await Roomy.init(peer, catalogId as EntityIdStr);
