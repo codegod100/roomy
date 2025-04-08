@@ -22,7 +22,7 @@
   };
 
   let { message, mergeWithPrevious = false }: Props = $props();
-
+  console.log("message", message);
   let messageRepliedTo = derivePromise(undefined, async () => {
     if (g.roomy && message.replyTo) {
       return await g.roomy.open(Message, message.replyTo);
@@ -58,9 +58,19 @@
     message.matches(Message) &&
       (g.isAdmin ||
         (user.agent &&
-          message
-            .forceCast(Message)
-            .authors((x) => x.toArray().includes(user.agent!.assertDid)))),
+          message instanceof Message &&
+          message.authors &&
+          typeof message.authors === "function" &&
+          (() => {
+            try {
+              return message.authors((x) =>
+                x.toArray().includes(user.agent!.assertDid),
+              );
+            } catch (error) {
+              console.error("Error checking message authors:", error);
+              return false;
+            }
+          })())),
   );
 
   const selectMessage = getContext("selectMessage") as (
@@ -293,21 +303,112 @@
 
 {#snippet messageView(msg: Message)}
   <!-- doesn't change after render, so $derived is not necessary -->
-  {@const authorProfile = getProfile(msg.authors((x) => x.get(0)))}
+  {@const authorId = (() => {
+    try {
+      // Method 1: Try using the authors function (standard approach)
+      if (msg.authors && typeof msg.authors === "function") {
+        const authorId = msg.authors((x) => x.get(0));
+        console.log("Author ID found via authors function:", authorId);
+        return authorId;
+      }
 
-  {#await authorProfile then authorProfile}
-    {@render toolbar(authorProfile)}
+      // Method 2: Try accessing author directly if it exists
+      // Use type assertion to bypass TypeScript checking
+      const msgAny = msg as any;
+      if (msgAny.author) {
+        console.log("Author found via direct author property:", msgAny.author);
+        return msgAny.author;
+      }
+
+      // Method 3: Try to find any property that might contain author information
+      // Look for common author-related property names
+      const possibleAuthorProps = [
+        "authorId",
+        "creator",
+        "createdBy",
+        "sender",
+        "from",
+        "userId",
+      ];
+      for (const prop of possibleAuthorProps) {
+        if (msgAny[prop]) {
+          console.log(`Author found via ${prop} property:`, msgAny[prop]);
+          return msgAny[prop];
+        }
+      }
+
+      // Method 4: Inspect the message object for any DID-like strings that might be authors
+      // This is a more aggressive approach that looks for DID patterns in any property
+      for (const key in msgAny) {
+        if (
+          typeof msgAny[key] === "string" &&
+          (msgAny[key].startsWith("did:") ||
+            (typeof msgAny[key] === "string" && msgAny[key].includes("did:")))
+        ) {
+          console.log(
+            `Potential author DID found in property ${key}:`,
+            msgAny[key],
+          );
+          return msgAny[key];
+        }
+      }
+
+      // Method 5: Try to access the raw data of the message
+      if (msgAny._data && typeof msgAny._data === "object") {
+        console.log("Examining message _data property", msgAny._data);
+
+        // Look for author in _data
+        if (msgAny._data.author) {
+          console.log("Author found in _data.author:", msgAny._data.author);
+          return msgAny._data.author;
+        }
+
+        // Look for any DID in _data
+        for (const key in msgAny._data) {
+          if (
+            typeof msgAny._data[key] === "string" &&
+            msgAny._data[key].startsWith("did:")
+          ) {
+            console.log(
+              `Potential author DID found in _data.${key}:`,
+              msgAny._data[key],
+            );
+            return msgAny._data[key];
+          }
+        }
+      }
+
+      // Method 6: Last resort - dump the full message object to console for inspection
+      // console.warn("Message has no identifiable author information", msg);
+
+      return null;
+    } catch (error) {
+      console.error("Error getting author ID:", error, msg);
+      return null;
+    }
+  })()}
+  {@const authorProfile = authorId
+    ? getProfile(authorId)
+    : Promise.resolve({
+        did: "unknown",
+        handle: "unknown",
+        displayName: "Unknown User (No Author ID)",
+        avatarUrl: "",
+      })}
+
+  {#await authorProfile then profile}
+    {@render toolbar(profile)}
 
     <div class="flex gap-4 group">
       {#if !mergeWithPrevious}
         <a
-          href={`https://bsky.app/profile/${authorProfile.handle}`}
-          title={authorProfile.handle}
+          href={profile ? `https://bsky.app/profile/${profile.handle}` : "#"}
+          title={profile?.handle || "Unknown User"}
           target="_blank"
         >
           <AvatarImage
-            handle={authorProfile.handle}
-            avatarUrl={authorProfile.avatarUrl}
+            handle={profile?.handle || "unknown"}
+            avatarUrl={profile?.avatarUrl || ""}
           />
         </a>
       {:else}
@@ -331,12 +432,14 @@
         {#if !mergeWithPrevious}
           <section class="flex items-center gap-2 flex-wrap w-fit">
             <a
-              href={`https://bsky.app/profile/${authorProfile.handle}`}
+              href={profile
+                ? `https://bsky.app/profile/${profile.handle}`
+                : "#"}
               target="_blank"
               class="text-primary hover:underline"
             >
-              <h5 class="font-bold" title={authorProfile.handle}>
-                {authorProfile.displayName || authorProfile.handle}
+              <h5 class="font-bold" title={profile?.handle || "Unknown User"}>
+                {profile?.displayName || profile?.handle || "Unknown User"}
               </h5>
             </a>
             {@render timestamp(message.createdDate || new Date())}
@@ -487,7 +590,7 @@
 {#snippet reactionToggle(reaction: string)}
   {@const reactions = message.reactions.all()[reaction]}
   {#if reactions}
-    {#await Promise.all([...reactions.values()].map( (x) => getProfile(x), )) then profilesThatReacted}
+    {#await Promise.all([...reactions.values()].map( (x) => (x ? getProfile(x) : Promise.resolve(null)), )).then( (profiles) => profiles.filter((p) => p !== null), ) then profilesThatReacted}
       <Button.Root
         onclick={() => toggleReaction(reaction)}
         class={`
@@ -506,9 +609,93 @@
 {/snippet}
 
 {#snippet replyBanner()}
-  {@const profileRepliedTo =
-    messageRepliedTo.value &&
-    getProfile(messageRepliedTo.value.authors((x) => x.get(0)))}
+  {@const authorId = (() => {
+    try {
+      if (!messageRepliedTo.value) {
+        return null;
+      }
+
+      const msg = messageRepliedTo.value;
+
+      // Method 1: Try using the authors function (standard approach)
+      if (msg.authors && typeof msg.authors === "function") {
+        const authorId = msg.authors((x) => x.get(0));
+        console.log("Reply author ID found via authors function:", authorId);
+        return authorId;
+      }
+
+      // Method 2: Try accessing author directly if it exists
+      // Use type assertion to bypass TypeScript checking
+      const msgAny = msg as any;
+      if (msgAny.author) {
+        console.log(
+          "Reply author found via direct author property:",
+          msgAny.author,
+        );
+        return msgAny.author;
+      }
+
+      // Method 3: Try to find any property that might contain author information
+      // Look for common author-related property names
+      const possibleAuthorProps = [
+        "authorId",
+        "creator",
+        "createdBy",
+        "sender",
+        "from",
+        "userId",
+      ];
+      for (const prop of possibleAuthorProps) {
+        if (msgAny[prop]) {
+          console.log(`Reply author found via ${prop} property:`, msgAny[prop]);
+          return msgAny[prop];
+        }
+      }
+
+      // Method 4: Inspect the message object for any DID-like strings that might be authors
+      for (const key in msgAny) {
+        if (
+          typeof msgAny[key] === "string" &&
+          (msgAny[key].startsWith("did:") ||
+            (typeof msgAny[key] === "string" && msgAny[key].includes("did:")))
+        ) {
+          console.log(
+            `Potential reply author DID found in property ${key}:`,
+            msgAny[key],
+          );
+          return msgAny[key];
+        }
+      }
+
+      // Method 5: Try to access the raw data of the message
+      if (msgAny._data && typeof msgAny._data === "object") {
+        // Look for author in _data
+        if (msgAny._data.author) {
+          console.log(
+            "Reply author found in _data.author:",
+            msgAny._data.author,
+          );
+          return msgAny._data.author;
+        }
+      }
+
+      console.warn(
+        "Reply message has no identifiable author information",
+        messageRepliedTo.value,
+      );
+      return null;
+    } catch (error) {
+      console.error(
+        "Error getting reply author ID:",
+        error,
+        messageRepliedTo.value,
+      );
+      return null;
+    }
+  })()}
+  {@const profileRepliedTo = authorId
+    ? getProfile(authorId)
+    : Promise.resolve(null)}
   {#await profileRepliedTo then profileRepliedTo}
     {#if messageRepliedTo.value && profileRepliedTo}
       <Button.Root

@@ -2,6 +2,7 @@
   import Icon from "@iconify/svelte";
   import Dialog from "$lib/components/Dialog.svelte";
   import { Accordion, Button, ToggleGroup, ScrollArea } from "bits-ui";
+  import type { AccordionContentSnippetProps } from "bits-ui/accordion";
 
   import { page } from "$app/state";
   import { g } from "$lib/global.svelte";
@@ -30,7 +31,11 @@
     for (const channel of await g.space.channels.items()) {
       for (const timelineItem of await channel.timeline.items()) {
         const message = timelineItem.tryCast(Message);
-        if (message && message.authors.length > 0) {
+        if (
+          message &&
+          message.authors &&
+          typeof message.authors === "function"
+        ) {
           for (const author of message.authors((x) => x.toArray())) {
             result.add(author);
           }
@@ -131,36 +136,69 @@
     if (!g.space) return;
     if (!showSpaceSettings) {
       spaceNameInput = g.space.name;
-      newSpaceHandle = g.space?.handles((x) => x.get(0)) || "";
+      // Check if handles is a function before calling it
+      newSpaceHandle =
+        typeof g.space.handles === "function"
+          ? g.space.handles((x) => x.get(0)) || ""
+          : "";
       verificationFailed = false;
       saveSpaceLoading = false;
-      Promise.all(
-        Object.keys(g.space.bans((x) => x.toJSON())).map((x) => getProfile(x)),
-      ).then(
-        (profiles) =>
-          (bannedHandlesInput = profiles.map((x) => x.handle).join(", ")),
-      );
+      if (typeof g.space.bans === "function") {
+        Promise.all(
+          Object.keys(g.space.bans((x) => x.toJSON())).map((x) =>
+            getProfile(x),
+          ),
+        ).then(
+          (profiles) =>
+            (bannedHandlesInput = profiles.map((x) => x.handle).join(", ")),
+        );
+      } else {
+        console.warn("g.space.bans is not a function");
+        bannedHandlesInput = "";
+      }
     }
   });
   async function saveBannedHandles() {
     if (!g.space || !user.agent) return;
-    const bannedIds = (
-      await Promise.all(
-        bannedHandlesInput
-          .split(",")
-          .map((x) => x.trim())
-          .filter((x) => !!x)
-          .map((x) => user.agent!.resolveHandle({ handle: x })),
-      )
-    ).map((x) => x.data.did);
-    g.space.bans((bans) => {
-      bans.clear();
-      for (const ban of bannedIds) {
-        bans.set(ban, true);
+    try {
+      const bannedIds = (
+        await Promise.all(
+          bannedHandlesInput
+            .split(",")
+            .map((x) => x.trim())
+            .filter((x) => !!x)
+            .map(async (handle) => {
+              // Use the com.atproto.identity.resolveHandle method
+              const response =
+                await user.agent!.com.atproto.identity.resolveHandle({
+                  handle,
+                });
+              return { data: { did: response.data.did } };
+            }),
+        )
+      ).map((x) => x.data.did);
+
+      if (typeof g.space.bans === "function") {
+        g.space.bans((bans) => {
+          bans.clear();
+          for (const ban of bannedIds) {
+            bans.set(ban, true);
+          }
+        });
+        g.space.commit();
+      } else {
+        console.warn("g.space.bans is not a function");
+        toast.error("Cannot save bans: feature not available", {
+          position: "bottom-right",
+        });
       }
-    });
-    g.space.commit();
-    showSpaceSettings = false;
+      showSpaceSettings = false;
+    } catch (error) {
+      console.error("Error saving banned handles:", error);
+      toast.error("Failed to resolve one or more handles", {
+        position: "bottom-right",
+      });
+    }
   }
   async function saveSpaceName() {
     if (!g.space) return;
@@ -170,6 +208,14 @@
   async function saveSpaceHandle() {
     if (!g.space) return;
     saveSpaceLoading = true;
+
+    // Check if handles is a function
+    if (typeof g.space.handles !== "function") {
+      console.error("g.space.handles is not a function");
+      saveSpaceLoading = false;
+      verificationFailed = true;
+      return;
+    }
 
     if (!newSpaceHandle) {
       g.space.handles((h) => h.clear());
@@ -335,10 +381,7 @@
               </div>
             {/if}
 
-            <Button.Root
-              class="btn btn-primary"
-              bind:disabled={saveSpaceLoading}
-            >
+            <Button.Root class="btn btn-primary" disabled={saveSpaceLoading}>
               {#if saveSpaceLoading}
                 <span class="loading loading-spinner"></span>
               {/if}
@@ -364,7 +407,7 @@
 
             <Button.Root
               class="btn btn-primary w-full"
-              bind:disabled={saveSpaceLoading}
+              disabled={saveSpaceLoading}
             >
               Save Bans
             </Button.Root>
@@ -580,13 +623,7 @@
             </Accordion.Header>
 
             <Accordion.Content forceMount>
-              {#snippet child({
-                props,
-                open,
-              }: {
-                open: boolean;
-                props: unknown[];
-              })}
+              {#snippet child({ open, props })}
                 {#if open}
                   <div
                     {...props}

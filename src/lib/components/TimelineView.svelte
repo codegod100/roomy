@@ -50,6 +50,34 @@
     }
   }
 
+  // Helper function to safely get profile for replying to
+  function getReplyingToProfile() {
+    if (
+      !replyingTo ||
+      !replyingTo.authors ||
+      typeof replyingTo.authors !== "function"
+    ) {
+      return Promise.resolve({
+        did: "unknown",
+        handle: "Unknown User",
+        displayName: "Unknown User",
+        avatarUrl: "",
+      });
+    }
+
+    const authorId = replyingTo.authors((x) => x.get(0));
+    if (!authorId) {
+      return Promise.resolve({
+        did: "unknown",
+        handle: "Unknown User",
+        displayName: "Unknown User",
+        avatarUrl: "",
+      });
+    }
+
+    return getProfile(authorId);
+  }
+
   $effect(() => {
     updateTabFromHash();
   });
@@ -62,7 +90,6 @@
   });
 
   let messageInput: JSONContent = $state({});
-
 
   // thread maker
   let isThreading = $state({ value: false });
@@ -148,9 +175,21 @@
     if (!g.roomy || !g.space || !g.channel || !user.agent) return;
 
     const message = await g.roomy.create(Message);
-    message.authors(
-      (authors) => user.agent && authors.push(user.agent.assertDid),
-    );
+
+    try {
+      // Try to set the author using the function approach
+      if (typeof message.authors === "function") {
+        message.authors(
+          (authors) => user.agent && authors.push(user.agent.assertDid),
+        );
+      } else {
+        // If authors is not a function, log a warning but continue
+        console.warn("message.authors is not a function", message);
+      }
+    } catch (error) {
+      console.error("Error setting message authors:", error);
+    }
+
     message.bodyJson = JSON.stringify(messageInput);
     message.createdDate = new Date();
     message.commit();
@@ -178,18 +217,18 @@
       channelNameInput = g.channel?.name || "";
       channelCategoryInput = undefined;
       g.space?.sidebarItems.items().then((items) => {
-          for (const item of items) {
-            const category = item.tryCast(Category);
-            if (
-              category &&
-              g.channel &&
-              category.channels.ids().includes(g.channel.id)
-            ) {
-              channelCategoryInput = category.id;
-              return;
-            }
+        for (const item of items) {
+          const category = item.tryCast(Category);
+          if (
+            category &&
+            g.channel &&
+            category.channels.ids().includes(g.channel.id)
+          ) {
+            channelCategoryInput = category.id;
+            return;
           }
-        });
+        }
+      });
     });
   });
 
@@ -374,7 +413,7 @@
               <div class="flex flex-col gap-1">
                 <h5 class="flex gap-2 items-center">
                   Replying to
-                  {#await getProfile(replyingTo.authors( (x) => x.get(0), )) then profile}
+                  {#await getReplyingToProfile() then profile}
                     <AvatarImage
                       handle={profile.handle || ""}
                       avatarUrl={profile.avatarUrl}

@@ -146,10 +146,23 @@ $effect.root(() => {
 
   $effect(() => {
     if (g.space && user.agent) {
-      g.isAdmin = g.space.admins((x) =>
-        x.toArray().includes(user.agent!.assertDid),
-      );
-      g.isBanned = !!g.space.bans((x) => x.get(user.agent!.assertDid));
+      // Check if admins is a function before calling it
+      if (typeof g.space.admins === "function") {
+        g.isAdmin = g.space.admins((x) =>
+          x.toArray().includes(user.agent!.assertDid),
+        );
+      } else {
+        console.warn("g.space.admins is not a function");
+        g.isAdmin = false;
+      }
+
+      // Check if bans is a function before calling it
+      if (typeof g.space.bans === "function") {
+        g.isBanned = !!g.space.bans((x) => x.get(user.agent!.assertDid));
+      } else {
+        console.warn("g.space.bans is not a function");
+        g.isBanned = false;
+      }
     } else {
       g.isAdmin = false;
       g.isBanned = false;

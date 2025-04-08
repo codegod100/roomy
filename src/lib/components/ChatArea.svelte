@@ -52,10 +52,62 @@
       previousMessage instanceof Message &&
       message instanceof Message &&
       !previousMessage.softDeleted;
-    const authorsAreSame =
-      areMessages &&
-      message.authors((x) => x.get(0)) ==
-        previousMessage.authors((x) => x.get(0));
+
+    // Safely check if authors are the same
+    const authorsAreSame = (() => {
+      try {
+        if (!areMessages) return false;
+
+        // Method 1: Try using the authors function (standard approach)
+        if (
+          message.authors &&
+          previousMessage.authors &&
+          typeof message.authors === "function" &&
+          typeof previousMessage.authors === "function"
+        ) {
+          const currentAuthor = message.authors((x) => x.get(0));
+          const prevAuthor = previousMessage.authors((x) => x.get(0));
+          if (currentAuthor && prevAuthor) {
+            return currentAuthor === prevAuthor;
+          }
+        }
+
+        // Method 2: Try alternative ways to get author IDs
+        const msgAny = message as any;
+        const prevMsgAny = previousMessage as any;
+
+        // Try direct author property
+        if (msgAny.author && prevMsgAny.author) {
+          return msgAny.author === prevMsgAny.author;
+        }
+
+        // Try common author properties
+        const authorProps = [
+          "authorId",
+          "creator",
+          "createdBy",
+          "sender",
+          "from",
+          "userId",
+        ];
+        for (const prop of authorProps) {
+          if (msgAny[prop] && prevMsgAny[prop]) {
+            return msgAny[prop] === prevMsgAny[prop];
+          }
+        }
+
+        // Try _data.author if available
+        if (msgAny._data?.author && prevMsgAny._data?.author) {
+          return msgAny._data.author === prevMsgAny._data.author;
+        }
+
+        return false;
+      } catch (error) {
+        console.error("Error comparing message authors:", error);
+        return false;
+      }
+    })();
+
     const messagesWithin5Minutes =
       (message.createdDate?.getTime() || 0) -
         (previousMessage?.createdDate?.getTime() || 0) <
