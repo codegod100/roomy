@@ -1,7 +1,7 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
   import Dialog from "$lib/components/Dialog.svelte";
-  import { Accordion, Button, ToggleGroup } from "bits-ui";
+  import { Accordion, Button, ToggleGroup, ScrollArea } from "bits-ui";
 
   import { page } from "$app/state";
   import { g } from "$lib/global.svelte";
@@ -249,10 +249,9 @@
   <nav
     class={[
       !isMobile &&
-        "max-w-[16rem] border-r-2 border-base-200 max-h-full h-full min-h-0 overflow-y-auto",
+        "max-w-[16rem] border-r-2 border-base-200 max-h-full h-full min-h-0 sidebar-scroll",
       "px-4 py-5 flex flex-col gap-4 w-full",
     ]}
-    style="scrollbar-width: thin;"
   >
     <div class="flex justify-between">
       <h1 class="text-2xl font-extrabold text-base-content text-ellipsis flex">
@@ -438,57 +437,70 @@
       </menu>
     {/if}
 
-    <ToggleGroup.Root type="single" value={g.channel?.id}>
-      <Accordion.Root
-        type="multiple"
-        bind:value={sidebarAccordionValues}
-        class="flex flex-col gap-4"
+    <ScrollArea.Root class="flex-grow h-full sidebar-content">
+      <ScrollArea.Viewport class="h-full w-full">
+        <ToggleGroup.Root type="single" value={g.channel?.id}>
+          <Accordion.Root
+            type="multiple"
+            bind:value={sidebarAccordionValues}
+            class="flex flex-col gap-4"
+          >
+            <Accordion.Item value="channels">
+              <Accordion.Header>
+                <Accordion.Trigger
+                  class="cursor-pointer flex w-full items-center justify-between mb-2 uppercase text-xs font-medium text-base-content"
+                >
+                  <h3>Channels</h3>
+                  <Icon
+                    icon="basil:caret-up-solid"
+                    class={`size-4 transition-transform duration-150 ${sidebarAccordionValues.includes("channels") && "rotate-180"}`}
+                  />
+                </Accordion.Trigger>
+              </Accordion.Header>
+              <Accordion.Content forceMount>
+                {#snippet child({ open }: { open: boolean })}
+                  {#if open}
+                    {@render channelsSidebar()}
+                  {/if}
+                {/snippet}
+              </Accordion.Content>
+            </Accordion.Item>
+            {#if availableThreads.value.length > 0}
+              <div class="divider my-0"></div>
+              <Accordion.Item value="threads">
+                <Accordion.Header>
+                  <Accordion.Trigger
+                    class="cursor-pointer flex w-full items-center justify-between mb-2 uppercase text-xs font-medium text-base-content"
+                  >
+                    <h3>Threads</h3>
+                    <Icon
+                      icon="basil:caret-up-solid"
+                      class={`size-4 transition-transform duration-150 ${sidebarAccordionValues.includes("threads") && "rotate-180"}`}
+                    />
+                  </Accordion.Trigger>
+                </Accordion.Header>
+                <Accordion.Content>
+                  {#snippet child({ open }: { open: boolean })}
+                    {#if open}
+                      {@render threadsSidebar()}
+                    {/if}
+                  {/snippet}
+                </Accordion.Content>
+              </Accordion.Item>
+            {/if}
+          </Accordion.Root>
+        </ToggleGroup.Root>
+      </ScrollArea.Viewport>
+      <ScrollArea.Scrollbar
+        orientation="vertical"
+        class="flex h-full w-2.5 touch-none select-none rounded-full border-l border-l-transparent p-px transition-all hover:w-3 hover:bg-dark-10 mr-1"
       >
-        <Accordion.Item value="channels">
-          <Accordion.Header>
-            <Accordion.Trigger
-              class="cursor-pointer flex w-full items-center justify-between mb-2 uppercase text-xs font-medium text-base-content"
-            >
-              <h3>Channels</h3>
-              <Icon
-                icon="basil:caret-up-solid"
-                class={`size-4 transition-transform duration-150 ${sidebarAccordionValues.includes("channels") && "rotate-180"}`}
-              />
-            </Accordion.Trigger>
-          </Accordion.Header>
-          <Accordion.Content forceMount>
-            {#snippet child({ open }: { open: boolean })}
-              {#if open}
-                {@render channelsSidebar()}
-              {/if}
-            {/snippet}
-          </Accordion.Content>
-        </Accordion.Item>
-        {#if availableThreads.value.length > 0}
-          <div class="divider my-0"></div>
-          <Accordion.Item value="threads">
-            <Accordion.Header>
-              <Accordion.Trigger
-                class="cursor-pointer flex w-full items-center justify-between mb-2 uppercase text-xs font-medium text-base-content"
-              >
-                <h3>Threads</h3>
-                <Icon
-                  icon="basil:caret-up-solid"
-                  class={`size-4 transition-transform duration-150 ${sidebarAccordionValues.includes("threads") && "rotate-180"}`}
-                />
-              </Accordion.Trigger>
-            </Accordion.Header>
-            <Accordion.Content>
-              {#snippet child({ open }: { open: boolean })}
-                {#if open}
-                  {@render threadsSidebar()}
-                {/if}
-              {/snippet}
-            </Accordion.Content>
-          </Accordion.Item>
-        {/if}
-      </Accordion.Root>
-    </ToggleGroup.Root>
+        <ScrollArea.Thumb
+          class="relative flex-1 rounded-full bg-base-300 transition-opacity"
+        />
+      </ScrollArea.Scrollbar>
+      <ScrollArea.Corner />
+    </ScrollArea.Root>
   </nav>
 
   <!-- Events/Room Content -->

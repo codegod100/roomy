@@ -1,23 +1,29 @@
 <script lang="ts">
   import "../../app.css";
+  import "$lib/tiptap/tiptap-styles.css";
+  import "$lib/sidebar-scroll.css";
   import { onMount } from "svelte";
   import { dev } from "$app/environment";
   import { g } from "$lib/global.svelte";
   import { user } from "$lib/user.svelte";
   import { cleanHandle, derivePromise, navigate } from "$lib/utils.svelte";
 
+  // Track active tooltip for scroll updates
+  let activeTooltip: HTMLElement | null = null;
+  let activeButton: HTMLElement | null = null;
+
   import Icon from "@iconify/svelte";
   import Dialog from "$lib/components/Dialog.svelte";
   import AvatarImage from "$lib/components/AvatarImage.svelte";
 
   import { Toaster } from "svelte-french-toast";
-  import { RenderScan } from "svelte-render-scan";
   import { AvatarMarble } from "svelte-boring-avatars";
-  import { Avatar, Button, ToggleGroup } from "bits-ui";
+  import { Avatar, Button, ToggleGroup, ScrollArea } from "bits-ui";
 
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
   import { Space } from "@roomy-chat/sdk";
   import ContextMenu from "$lib/components/ContextMenu.svelte";
+  import { RenderScan } from 'svelte-render-scan';
 
   let { children } = $props();
 
@@ -33,9 +39,45 @@
     async () => (await g.roomy?.spaces.items()) || [],
   );
 
-  onMount(async () => {
-    await user.init();
+  onMount(() => {
+    user.init();
+
+    // Add scroll event listener to update tooltip position
+    const scrollArea = document.querySelector('.space-list-scroll');
+    const scrollViewport = document.querySelector('.bits-scroll-area-viewport');
+
+    if (scrollArea) {
+      scrollArea.addEventListener('scroll', updateTooltipPosition);
+    }
+
+    if (scrollViewport) {
+      scrollViewport.addEventListener('scroll', updateTooltipPosition);
+    }
+
+    // Also listen for window resize
+    window.addEventListener('resize', updateTooltipPosition);
+
+    return () => {
+      if (scrollArea) {
+        scrollArea.removeEventListener('scroll', updateTooltipPosition);
+      }
+
+      if (scrollViewport) {
+        scrollViewport.removeEventListener('scroll', updateTooltipPosition);
+      }
+
+      window.removeEventListener('resize', updateTooltipPosition);
+    };
   });
+
+  // Function to update tooltip position
+  function updateTooltipPosition() {
+    if (activeTooltip && activeButton) {
+      const rect = activeButton.getBoundingClientRect();
+      activeTooltip.style.left = `${rect.right + 8}px`;
+      activeTooltip.style.top = `${rect.top + rect.height/2}px`;
+    }
+  }
 
   $effect(() => {
     if (user.session) isLoginDialogOpen = false;
@@ -62,9 +104,9 @@
     try {
       handleInput = cleanHandle(handleInput);
       await user.loginWithHandle(handleInput);
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error(e);
-      loginError = e.toString();
+      loginError = e instanceof Error ? e.message : String(e);
     }
 
     loginLoading = false;
@@ -85,36 +127,18 @@
   <!-- Server Bar -->
 
   <aside
-    class="w-fit col-span-2 flex flex-col justify-between px-4 py-8 items-center border-r-2 border-base-200"
+    class="w-fit col-span-2 flex flex-col px-4 py-8 items-center border-r-2 border-base-200 h-full"
   >
-    <ToggleGroup.Root
-      type="single"
-      value={g.currentCatalog}
-      class="flex flex-col gap-2 items-center"
-    >
-      <ToggleGroup.Item
-        value="home"
-        onclick={() => navigate("home")}
-        class="btn btn-ghost size-16 data-[state=on]:border-accent"
+    <div class="flex flex-col h-full w-full flex-grow overflow-hidden">
+      <ToggleGroup.Root
+        type="single"
+        value={g.currentCatalog}
+        class="flex flex-col gap-2 items-center w-full pl-2"
       >
-        <Icon icon="iconamoon:home-fill" font-size="2em" />
-      </ToggleGroup.Item>
-
-      <div class="divider mt-0 mb-1"></div>
-
-      {#each spaces.value as space, i}
-        <ContextMenu
-          menuTitle={space.name}
-          items={[
-            {
-              label: "Leave Space",
-              icon: "mdi:exit-to-app",
-              onselect: () => {
-                g.roomy?.spaces.remove(i);
-                g.roomy?.commit();
-              },
-            },
-          ]}
+        <ToggleGroup.Item
+          value="home"
+          onclick={() => navigate("home")}
+          class="btn btn-ghost size-16 data-[state=on]:border-accent mb-2"
         >
           <ToggleGroup.Item
             onclick={() =>
@@ -128,11 +152,9 @@
                 <AvatarMarble name={space.id} />
               </Avatar.Fallback>
             </Avatar.Root>
-
+            
             <!-- Fast tooltip with no delay -->
-            <div
-              class="absolute left-full ml-2 px-2 py-1 bg-base-300 rounded shadow-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50"
-            >
+            <div class="absolute left-full ml-2 px-2 py-1 bg-base-300 rounded shadow-md text-sm whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none z-50">
               {space.name}
             </div>
           </ToggleGroup.Item>
@@ -214,3 +236,26 @@
 
   {@render children()}
 </div>
+
+<style>
+.space-tooltip {
+  position: fixed;
+  z-index: 9999;
+  pointer-events: none;
+  transform: translateY(-50%);
+  background-color: var(--color-base-300);
+  border-radius: 0.25rem;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 0.25rem 0.5rem;
+  white-space: nowrap;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease-in-out, visibility 0.15s ease-in-out;
+}
+
+/* Using :global to prevent Svelte from warning about unused selectors */
+:global(.space-tooltip-visible) {
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+</style>

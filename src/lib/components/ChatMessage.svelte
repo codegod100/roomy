@@ -346,19 +346,6 @@
         <span class="prose select-text">
           {@html getContentHtml(JSON.parse(msg.bodyJson))}
         </span>
-        <!-- TODO: images. -->
-        <!-- {#if msg.images?.length}
-        <div class="flex flex-wrap gap-2 mt-2">
-          {#each msg.images as image}
-            <img
-              src={image.source}
-              alt={image.alt || ""}
-              class="max-w-md max-h-64 rounded-lg object-cover"
-              loading="lazy"
-            />
-          {/each}
-        </div>
-      {/if} -->
       </Button.Root>
     </div>
   {/await}

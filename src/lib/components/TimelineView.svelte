@@ -62,7 +62,7 @@
   });
 
   let messageInput: JSONContent = $state({});
-  let imageFiles: FileList | null = $state(null);
+
 
   // thread maker
   let isThreading = $state({ value: false });
@@ -73,7 +73,7 @@
     selectedMessages.push(message);
   });
   setContext("removeSelectedMessage", (message: Message) => {
-    selectedMessages = selectedMessages.filter((m) => m != message);
+    selectedMessages = selectedMessages.filter((m) => m !== message);
   });
 
   $effect(() => {
@@ -147,30 +147,6 @@
   async function sendMessage() {
     if (!g.roomy || !g.space || !g.channel || !user.agent) return;
 
-    /* TODO: image upload refactor with tiptap
-    const images = imageFiles
-      ? await Promise.all(
-          Array.from(imageFiles).map(async (file) => {
-            try {
-              const resp = await user.uploadBlob(file);
-              return {
-                source: resp.url, // Use the blob reference from ATP
-                alt: file.name,
-              };
-            } catch (error) {
-              console.error("Failed to upload image:", error);
-              toast.error("Failed to upload image", { position: "bottom-end" });
-              return null;
-            }
-          }),
-        ).then((results) =>
-          results.filter(
-            (result): result is NonNullable<typeof result> => result !== null,
-          ),
-        )
-      : undefined;
-    */
-
     const message = await g.roomy.create(Message);
     message.authors(
       (authors) => user.agent && authors.push(user.agent.assertDid),
@@ -180,38 +156,18 @@
     message.commit();
     if (replyingTo) message.replyTo = replyingTo;
 
-    // TODO: image upload refactor with tiptap
-
     g.channel.timeline.push(message);
     g.channel.commit();
 
     messageInput = {};
     replyingTo = undefined;
-    imageFiles = null;
   }
 
   //
   // Settings Dialog
   //
 
-  /* TODO: image upload refactor with tiptap
-  let mayUploadImages = $derived.by(() => {
-    if (isAdmin) return true;
-    if (!space) { return }
-
-    let messagesByUser = Object.values(space.view.messages).filter(
-      (x) => user.agent && x.author == user.agent.assertDid,
-    );
-    if (messagesByUser.length > 5) return true;
-    return !!messagesByUser.find(
-      (message) =>
-        !!Object.values(message.reactions).find(
-          (reactedUsers) =>
-            !!reactedUsers.find((user) => !!space?.view.admins.includes(user)),
-        ),
-    );
-  });
-  */
+  // All users can upload images now
   let showSettingsDialog = $state(false);
   let channelNameInput = $state("");
   let channelCategoryInput = $state(undefined) as undefined | string;
@@ -221,8 +177,7 @@
     untrack(() => {
       channelNameInput = g.channel?.name || "";
       channelCategoryInput = undefined;
-      g.space &&
-        g.space.sidebarItems.items().then((items) => {
+      g.space?.sidebarItems.items().then((items) => {
           for (const item of items) {
             const category = item.tryCast(Category);
             if (
@@ -254,7 +209,7 @@
         const item =
           unknownItem.tryCast(Category) || unknownItem.tryCast(Channel);
 
-        if (item instanceof Channel && item.id == g.channel.id) {
+        if (item instanceof Channel && item.id === g.channel.id) {
           foundChannelInSidebar = true;
         }
 
@@ -262,12 +217,12 @@
           const categoryItems = item.channels.ids();
           if (item.id !== channelCategoryInput) {
             const thisChannelIdx = categoryItems.indexOf(g.channel.id);
-            if (thisChannelIdx != -1) {
+            if (thisChannelIdx !== -1) {
               item.channels.remove(thisChannelIdx);
               item.commit();
             }
           } else if (
-            item.id == channelCategoryInput &&
+            item.id === channelCategoryInput &&
             !categoryItems.includes(g.channel.id)
           ) {
             item.channels.push(g.channel);
@@ -276,7 +231,7 @@
         } else if (
           item instanceof Channel &&
           channelCategoryInput &&
-          item.id == g.channel.id
+          item.id === g.channel.id
         ) {
           const { offset } = g.space.entity.doc.getCursorPos(cursor);
           g.space.sidebarItems.remove(offset);
@@ -292,31 +247,7 @@
     showSettingsDialog = false;
   }
 
-  /* TODO: image upload refactor with tiptap
-  async function handleImageSelect(event: Event) {
-    const input = event.target as HTMLInputElement;
-    imageFiles = input.files;
-  }
-
-  async function handlePaste(event: ClipboardEvent) {
-    if (!mayUploadImages) return;
-
-    const items = event.clipboardData?.items;
-    if (!items) return;
-
-    for (const item of items) {
-      if (item.type.startsWith("image/")) {
-        const file = item.getAsFile();
-        if (file) {
-          imageFiles = new DataTransfer().files;
-          const dataTransfer = new DataTransfer();
-          dataTransfer.items.add(file);
-          imageFiles = dataTransfer.files;
-        }
-      }
-    }
-  }
-  */
+  // Image upload is now handled in ChatInput.svelte
 </script>
 
 <header class="navbar">
@@ -486,49 +417,10 @@
               >
             {/if}
 
-            <!--
-            {#if mayUploadImages}
-              <label
-                class="cursor-pointer text-white hover:text-gray-300 absolute right-3 top-1/2 -translate-y-1/2"
-              >
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  class="hidden"
-                  onchange={handleImageSelect}
-                />
-                <Icon
-                  icon="material-symbols:add-photo-alternate"
-                  class="text-2xl"
-                />
-              </label>
-            {/if}
-            -->
+            <!-- Image upload button is now in ChatInput.svelte -->
           </div>
 
-          <!-- Image preview 
-          {#if imageFiles?.length}
-            <div class="flex gap-2 flex-wrap">
-              {#each Array.from(imageFiles) as file}
-                <div class="relative mt-5">
-                  <img
-                    src={URL.createObjectURL(file)}
-                    alt={file.name}
-                    class="w-20 h-20 object-cover rounded"
-                  />
-                  <button
-                    type="button"
-                    class="absolute -top-2 -right-2 bg-red-500 rounded-full p-1"
-                    onclick={() => (imageFiles = null)}
-                  >
-                    <Icon icon="zondicons:close-solid" color="white" />
-                  </button>
-                </div>
-              {/each}
-            </div>
-          {/if}
-          -->
+          <!-- Image preview is now handled by the Tiptap editor -->
         </section>
       {/if}
 
