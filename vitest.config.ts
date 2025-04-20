@@ -1,5 +1,5 @@
 import { defineConfig } from 'vitest/config';
-import path from 'path';
+import path from 'node:path';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import wasm from 'vite-plugin-wasm';
@@ -22,5 +22,13 @@ export default defineConfig({
       '$lib': path.resolve(__dirname, 'src/lib'),
     },
     environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'json', 'html'],
+      // Exclude Svelte files to avoid conflicts with $state syntax
+      include: ['src/**/*.{js,ts}'],
+      exclude: ['**/*.d.ts', '**/*.test.{js,ts}', '**/__mocks__/**', '**/node_modules/**', '**/*.svelte', '**/*.svelte.ts'],
+      all: true,
+    },
   },
 });
