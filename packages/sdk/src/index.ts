@@ -357,16 +357,52 @@ export class EntityList<
 
   /** Load the full list of entities as an array. */
   async items(): Promise<T[]> {
-    return await Promise.all(
-      this.entity.getOrInit(this.#def, (x) =>
-        x
-          .toArray()
-          .map(
-            async (ent) =>
-              new this.#factory(this.peer, await this.peer.open(ent))
-          )
-      )
-    );
+    console.log(`[EntityList] Starting to load items`);
+    const startTime = Date.now();
+    
+    try {
+      const result = await this.entity.getOrInit(this.#def, async (x) => {
+        const ids = x.toArray();
+        console.log(`[EntityList] Found ${ids.length} items to load`);
+
+        const items = [];
+        for (let i = 0; i < ids.length; i++) {
+          const ent = ids[i];
+          // Skip if the entity ID is not valid
+          if (!ent) {
+            console.warn(`[EntityList] Skipping invalid entity at index ${i}`);
+            continue;
+          }
+          
+          const itemStart = Date.now();
+          try {
+            console.log(`[EntityList] Loading item ${i + 1}/${ids.length}: ${ent}`);
+            const entity = await this.peer.open(ent);
+            // Verify the entity was successfully opened
+            if (!entity) {
+              throw new Error(`Failed to open entity: ${ent}`);
+            }
+            const wrapped = new this.#factory(this.peer, entity);
+            const duration = Date.now() - itemStart;
+            console.log(`[EntityList] Loaded item in ${duration}ms`);
+            items.push(wrapped);
+          } catch (error) {
+            console.error(`[EntityList] Error loading item ${ent} (${i + 1}/${ids.length}):`, error);
+            throw error;
+          }
+        }
+
+        return items;
+      });
+
+      const totalTime = Date.now() - startTime;
+      console.log(`[EntityList] Loaded ${result.length} items in ${totalTime}ms`);
+      
+      return result;
+    } catch (error) {
+      console.error('[EntityList] Fatal error in items():', error);
+      throw error;
+    }
   }
 
   /** Same as {@linkcode EntityList#items()}, but also returns a Loro Cursor. */
@@ -518,29 +554,66 @@ export class Category extends NamedEntity {
     return new EntityList(this.peer, this.entity, c.Channels, Channel);
   }
 }
-export class WikiPage extends NamedEntity {
-  constructor(peer: Peer, entity: Entity) {
-    super(peer, entity);
-    this.entity.init(c.WikiPage);
+
+/**
+ * An entry that may appear in a {@linkcode Channel} or {@linkcode Thread} timeline, such as a
+ * {@linkcode Message} or {@linkcode Announcement}.
+ *
+ * TODO: Think about this: we are extending named entity to get the createdDate meta, but we don't
+ * actually have a name for chat messages usually. We should probably either make the created date
+ * separate from the component with the name in it, or make the name optional.
+ *
+ * At this point I'm thinking about making the name optional.
+ */
+export class TimelineItem extends NamedEntity {
+  /** The emoji reactions to the message. */
+  get reactions(): Reactions {
+    return this.forceCast(Reactions);
   }
 
-  static override matches(wrapper: EntityWrapper): boolean {
-    return wrapper.entity.has(c.WikiPage);
+  /** The entity that this message was in reply to, if any. */
+  get replyTo(): EntityIdStr | undefined {
+    return this.entity.getOrInit(c.ReplyTo, (x) => x.get("entity"));
   }
 
-  get bodyJson(): string {
-    return this.entity.getOrInit(c.JsonContent, (x) => x.get("content"));
-  }
-
-  set bodyJson(jsonString: string) {
-    this.entity.getOrInit(c.JsonContent, (x) => x.set("content", jsonString));
-  }
-
-  body<R>(handler: (x: LoroText) => R): R {
-    return this.entity.getOrInit(c.Content, handler);
+  /** Set the entity that this message was in reply to, if any. */
+  set replyTo(entity: EntityWrapper | IntoEntityId | undefined) {
+    if (entity) {
+      this.entity.getOrInit(c.ReplyTo, (x) =>
+        x.set(
+          "entity",
+          entity instanceof EntityWrapper
+            ? entity.id
+            : intoEntityId(entity).toString()
+        )
+      );
+    } else {
+      this.entity.delete(c.ReplyTo);
+    }
   }
 }
 
+/**
+ * A thread is a container for messages that is considered short-lived and is often created ad-hoc.
+ */
+export class Thread extends TimelineItem {
+  constructor(peer: Peer, entity: Entity) {
+    super(peer, entity);
+    this.entity.init(c.Thread);
+  }
+  static override matches(wrapper: EntityWrapper): boolean {
+    return wrapper.entity.has(c.Thread);
+  }
+
+  /** The timeline of messages in this thread */
+  get timeline(): EntityList<TimelineItem> {
+    return new EntityList(this.peer, this.entity, c.Timeline, TimelineItem);
+  }
+}
+
+/**
+ * A timeline is a container for messages, announcements, and other timeline items.
+ */
 export class Timeline extends NamedEntity {
   get timeline(): EntityList<TimelineItem> {
     return new EntityList(this.peer, this.entity, c.Timeline, TimelineItem);
@@ -568,53 +641,26 @@ export class Channel extends Timeline {
   }
 }
 
-/**
- * A thread is a container for messages that is considered short-lived and is often created ad-hoc.
- */
-export class Thread extends Timeline {
+export class WikiPage extends NamedEntity {
   constructor(peer: Peer, entity: Entity) {
     super(peer, entity);
-    this.entity.init(c.Thread);
+    this.entity.init(c.WikiPage);
   }
+
   static override matches(wrapper: EntityWrapper): boolean {
-    return wrapper.entity.has(c.Thread);
-  }
-}
-
-/**
- * An entry that may appear in a {@linkcode Channel} or {@linkcode Thread} timeline, such as a
- * {@linkcode Message} or {@linkcode Announcement}.
- */
-// TODO: Think about this: we are extending named entity to get the createdDate meta, but we don't
-// actually have a name for chat messages usually. We should probably either make the created date
-// separate from the component with the name in it, or make the name optional.
-//
-// At this point I'm thinking about making the name optional.
-export class TimelineItem extends NamedEntity {
-  /** The emoji reactions to the message. */
-  get reactions(): Reactions {
-    return this.forceCast(Reactions);
+    return wrapper.entity.has(c.WikiPage);
   }
 
-  /** The entity that this message was in reply to, if any. */
-  get replyTo(): EntityIdStr | undefined {
-    return this.entity.get(c.ReplyTo, (x) => x?.get("entity"));
+  get bodyJson(): string {
+    return this.entity.getOrInit(c.JsonContent, (x) => x.get("content"));
   }
 
-  /** Set the entity that this message was in reply to, if any. */
-  set replyTo(entity: EntityWrapper | IntoEntityId | undefined) {
-    if (entity) {
-      this.entity.getOrInit(c.ReplyTo, (x) =>
-        x.set(
-          "entity",
-          entity instanceof EntityWrapper
-            ? entity.id
-            : intoEntityId(entity).toString()
-        )
-      );
-    } else {
-      this.entity.delete(c.ReplyTo);
-    }
+  set bodyJson(jsonString: string) {
+    this.entity.getOrInit(c.JsonContent, (x) => x.set("content", jsonString));
+  }
+
+  body<R>(handler: (x: LoroText) => R): R {
+    return this.entity.getOrInit(c.Content, handler);
   }
 }
 
