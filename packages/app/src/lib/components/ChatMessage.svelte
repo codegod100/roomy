@@ -360,14 +360,21 @@
             <button
               onclick={async (e) => {
                 e.stopPropagation();
+                // Navigate to user profile page
+                const userId =
+                  message.current?._edits.content?.by?.id || authorData?.id;
+                if (userId) {
+                  goto(`/user/${userId}`);
+                }
+              }}
+              oncontextmenu={async (e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 if (authorData?.id !== me.current?.id) {
                   await handleOpenDM();
                 }
               }}
               class="rounded-full hover:ring-2 hover:ring-blue-500 transition-all"
-              title={authorData?.id === me.current?.id
-                ? "Your profile"
-                : `Message ${authorData?.name}`}
             >
               <Avatar.Root class="size-8 sm:size-10">
                 <Avatar.Image src={authorData?.imageUrl} class="rounded-full" />

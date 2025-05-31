@@ -39,14 +39,7 @@ export async function initSearch(space: co.loaded<typeof Space>) {
   await search[space.id]?.mount(db);
 
   for (const c of space.channels ?? []) {
-    if (!c) continue;
-    
-    // Only index chat channels, skip feeds channels
-    if (c.channelType === "feeds") {
-      console.log("Skipping feeds channel from search index:", c.name);
-      continue;
-    }
-    
+    if (!c || c.channelType === "feeds") continue;
     // get last indexed messag id for channel
     const lastIndexedMessageId = localStorage.getItem(
       `lastIndexedMessageId-${c.id}`,

@@ -8,10 +8,13 @@
 <script lang="ts">
   import toast from "svelte-french-toast";
   import Icon from "@iconify/svelte";
+  import { setContext } from "svelte";
+  import { Index } from "flexsearch";
   import ChatArea from "$lib/components/ChatArea.svelte";
   import ChatInput from "$lib/components/ChatInput.svelte";
   import { Button } from "bits-ui";
   import { Account, co, Group } from "jazz-tools";
+  import { derivePromise } from "$lib/utils.svelte";
   import {
     LastReadList,
     Message,
@@ -200,8 +203,71 @@
   let threadTitleInput = $state("");
 
   let filesInMessage: File[] = $state([]);
+  let selectedMessages: Message[] = $state([]);
+  
+  let isThreadingValue = $derived(threading.active);
+  let isThreading = { get value() { return isThreadingValue; } };
+  setContext("isThreading", isThreading);
+  setContext("selectMessage", (message: Message) => {
+    selectedMessages.push(message);
+  });
+  setContext("removeSelectedMessage", (msg: Message) => {
+    selectedMessages = selectedMessages.filter((m) => m !== msg);
+  });
 
-  async function addThread(e: SubmitEvent) {
+  $effect(() => {
+    if (!isThreading.value && selectedMessages.length > 0) {
+      selectedMessages = [];
+    }
+  });
+
+  // Reply Utils
+  let replyingTo = $state() as Message | undefined;
+  setContext("setReplyTo", (message: Message) => {
+    replyingTo = message;
+  });
+
+  // Initialize FlexSearch with appropriate options for message content
+  let searchIndex = new Index({
+    tokenize: "forward",
+    preset: "performance",
+  });
+  let searchQuery = $state("");
+  let showSearchInput = $state(false);
+  let searchResults = $state<Message[]>([]);
+  let showSearchResults = $state(false);
+  let virtualizer = $state<Virtualizer<string> | undefined>(undefined);
+
+  // Function to handle search result click
+  function handleSearchResultClick(messageId: string) {
+    // Hide search results
+    showSearchResults = false;
+
+    // Find the message in the timeline to get its index
+    if (channel.current) {
+      // Get the timeline IDs - this returns an array, not a Promise
+      const ids = channel.current.mainThread?.timeline?.perAccount ? 
+        Object.values(channel.current.mainThread.timeline.perAccount)
+          .flatMap(accountFeed => new Array(...accountFeed.all)) : [];
+
+      if (!messageId.includes("leaf:")) {
+        return;
+      }
+
+      const messageIndex = ids.indexOf(messageId);
+
+      if (messageIndex !== -1) {
+        virtualizer?.scrollToIndex(messageIndex);
+      } else {
+        console.error("Message not found in timeline:", messageId);
+      }
+    } else {
+      console.error("No active channel");
+    }
+  }
+
+
+  async function handleCreateThread(e: SubmitEvent) {
     e.preventDefault();
     const messageIds = <string[]>[];
 
@@ -518,7 +584,7 @@
         <Icon icon="tabler:search" class="text-base-content" />
       </button>
     {/if}
-    <TimelineToolbar createThread={addThread} bind:threadTitleInput />
+    <TimelineToolbar createThread={handleCreateThread} bind:threadTitleInput />
   </div>
 </Navbar>
 
@@ -662,7 +728,7 @@
         </div>
 
         <!-- {#if isMobile}
-          <TimelineToolbar {createThread} bind:threadTitleInput />
+          <TimelineToolbar createThread={handleCreateThread} bind:threadTitleInput />
         {/if} -->
       </div>
     </div>

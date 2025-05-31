@@ -212,7 +212,7 @@
 <div
   class={[
     page.url.pathname === "/messages" ? "ml-24" : "",
-    isSidebarVisible.value || true
+    page.params.space && (isSidebarVisible.value || true)
       ? "sm:ml-84 z-40 bg-white shadow-lg border-l border-base-800/20 relative"
       : "",
     "relative",

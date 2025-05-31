@@ -2,8 +2,7 @@
   import { onMount, onDestroy } from 'svelte';
   import { dmClient } from '$lib/dm.svelte';
   import Icon from "@iconify/svelte";
-  import { Avatar } from "bits-ui";
-  import { AvatarBeam } from "svelte-boring-avatars";
+  import DMProfileHeader from './DMProfileHeader.svelte';
   
   export let conversationId: string;
   
@@ -262,34 +261,8 @@
 </script>
 
 <div class="flex flex-col h-full bg-base-100 overflow-hidden">
-  <!-- Conversation Header -->
-  {#if conversationPartner}
-    <div class="flex-shrink-0 border-b border-base-300 p-4 bg-base-50">
-      <div class="flex items-center gap-3">
-        <Avatar.Root class="w-10 h-10">
-          <Avatar.Image 
-            src={conversationPartner.avatar} 
-            alt={conversationPartner.displayName || conversationPartner.handle}
-            class="rounded-full"
-          />
-          <Avatar.Fallback>
-            <AvatarBeam 
-              name={conversationPartner.did || conversationPartner.handle || 'unknown'} 
-              size={40}
-            />
-          </Avatar.Fallback>
-        </Avatar.Root>
-        <div class="flex-1">
-          <h3 class="font-semibold text-base-content">
-            {conversationPartner.displayName || conversationPartner.handle || 'Unknown User'}
-          </h3>
-          {#if conversationPartner.displayName && conversationPartner.handle}
-            <p class="text-sm text-base-content/60">@{conversationPartner.handle}</p>
-          {/if}
-        </div>
-      </div>
-    </div>
-  {/if}
+  <!-- Conversation Header with Activity Heatmap -->
+  <DMProfileHeader {conversationPartner} />
 
   {#if isLoading && messages.length === 0}
     <div class="flex-1 flex items-center justify-center">
