@@ -33,17 +33,8 @@
       avatarPreviewUrl = "";
 
       // Load current avatar if exists
-      spaceAvatarUrl = "";
-      // Access the image entity directly
-      const imageId = globalState.space.image;
+      spaceAvatarUrl = globalState.space?.image?.uri || "";
 
-      // if (imageId) {
-      //   globalState.roomy.open(Image, imageId).then((image) => {
-      //     if (image.uri) {
-      //       spaceAvatarUrl = image.uri;
-      //     }
-      //   });
-      // }
 
       // Promise.all(
       //   Object.keys(globalState.space.bans((x) => x.toJSON())).map((x) =>
@@ -95,7 +86,7 @@
 
   async function uploadAvatar(ev: Event) {
     ev.preventDefault();
-    if (!avatarFile || !globalState.space || !globalState.roomy || !user.agent)
+    if (!avatarFile || !globalState.space || !user.agent)
       return;
 
     try {

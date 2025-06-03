@@ -24,11 +24,7 @@ import {Space,Image} from "$lib/schema"
 
   let isActive = $derived($page.url.pathname.includes(space?.id || ''));
 
-  const spaceImage = derivePromise(null, async () => {
-    if (space?.image) {
-      return space.image;
-    }
-  });
+  const spaceImage = space?.image
 </script>
 
 <TooltipPortal
@@ -71,9 +67,9 @@ import {Space,Image} from "$lib/schema"
       transition-all duration-200`}
   >
     <div class="flex items-center justify-center overflow-hidden">
-      {#if spaceImage.value?.uri}
+      {#if spaceImage?.uri}
         <img
-          src={spaceImage.value?.uri}
+          src={spaceImage?.uri}
           alt={space?.name || ""}
           class="w-10 h-10 object-cover rounded-full object-center"
         />

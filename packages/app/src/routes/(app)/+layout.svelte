@@ -26,9 +26,7 @@
   // const spaces = $derived(SpaceglobalState.catalog?.spaces)
   // $inspect(spaces).with((kind,spaces) => console.log(kind,"inspect spaces", spaces?.toJSON()))
   let spaces = $derived(globalState.catalog?.spaces)
-  $inspect(globalState.catalog?.spaces).with(()=>{
-    console.log("inspect spaces", globalState.catalog?.spaces?.toJSON())
-  })
+
 
   // $effect(()=>{
 

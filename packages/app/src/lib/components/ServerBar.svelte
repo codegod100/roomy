@@ -25,7 +25,6 @@
     spaces: Spaces | undefined | null;
     visible: boolean;
   } = $props();
-  console.log("server bar spaces", spaces?.toJSON())
   let handleInput = $state("");
   let loginLoading = $state(false);
   let signupLoading = $state(false);
@@ -40,7 +39,6 @@
     const space = Space.create({ name: newSpaceName }, {owner: Group.create()});
     // space.admins((x) => user.agent && x.push(user.agent.assertDid));
     // space.commit();
-    console.log("spaces", globalState.catalog?.spaces);
     if (globalState.catalog) {
       if (!globalState.catalog?.spaces) {
         console.log("creating new spaces list for catalog");
