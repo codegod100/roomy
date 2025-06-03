@@ -93,13 +93,20 @@ export const Image = co.map({
     uri: z.string(),
 })
 
+export const Category = co.map({
+    name: z.string(),
+    channels: z.optional(co.list(Channel)),
+    softDeleted: z.boolean().optional(),
+})
+
 export const Space = co.map({
     name: z.string(),
     channels: z.optional(co.list(Channel)),
     threads: z.optional(co.list(Thread)),
     image: z.optional(Image),
     wikipages: z.optional(co.list(WikiPage)),
-    links: z.optional(Thread)
+    links: z.optional(Thread),
+    categories: z.optional(co.list(Category))
 })
 export const Spaces = co.list(Space);
 export type Spaces = Loaded<typeof Spaces>
@@ -109,11 +116,7 @@ export type Channels = Loaded<typeof Channels>
 
 
 
-export const Category = co.map({
-    name: z.string(),
-    channels: z.optional(co.list(Channel)),
-    softDeleted: z.boolean().optional(),
-})
+
 
 export type Space = co.loaded<typeof Space>
 export type Profile = Loaded<typeof Profile>

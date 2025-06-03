@@ -15,85 +15,86 @@
   let showSettingsDialog = $state(false);
   let channelNameInput = $state("");
   let channelCategoryInput = $state(undefined) as undefined | string;
+  let categories = $derived(globalState.space?.categories || [])
 
-  // $effect(() => {
-  //   if (!globalState.space) return;
+  $effect(() => {
+    if (!globalState.space) return;
 
-  //   untrack(() => {
-  //     channelNameInput = globalState.channel?.name || "";
-  //     channelCategoryInput = undefined;
-  //     globalState.space &&
-  //       globalState.space.sidebarItems.items().then((items) => {
-  //         for (const item of items) {
-  //           const category = item.tryCast(Category);
-  //           if (
-  //             category &&
-  //             globalState.channel &&
-  //             category.channels.ids().includes(globalState.channel.id)
-  //           ) {
-  //             channelCategoryInput = category.id;
-  //             return;
-  //           }
-  //         }
-  //       });
-  //   });
-  // });
+    untrack(() => {
+      channelNameInput = globalState.channel?.name || "";
+      channelCategoryInput = undefined;
+      // globalState.space &&
+      //   globalState.space.sidebarItems.items().then((items) => {
+      //     for (const item of items) {
+      //       const category = item.tryCast(Category);
+      //       if (
+      //         category &&
+      //         globalState.channel &&
+      //         category.channels.ids().includes(globalState.channel.id)
+      //       ) {
+      //         channelCategoryInput = category.id;
+      //         return;
+      //       }
+      //     }
+      //   });
+    });
+  });
 
-  // async function saveSettings() {
-  //   if (!globalState.space || !globalState.channel) return;
-  //   if (channelNameInput) {
-  //     globalState.channel.name = channelNameInput;
-  //     // globalState.channel.commit();
-  //   }
+  async function saveSettings() {
+    if (!globalState.space || !globalState.channel) return;
+    if (channelNameInput) {
+      globalState.channel.name = channelNameInput;
+      // globalState.channel.commit();
+    }
 
-  //   if (globalState.channel) {
-  //     let foundChannelInSidebar = false;
-  //     for (const [
-  //       cursor,
-  //       unknownItem,
-  //     ] of await globalState.space.sidebarItems.itemCursors()) {
-  //       const item =
-  //         unknownItem.tryCast(Category) || unknownItem.tryCast(Channel);
+    // if (globalState.channel) {
+    //   let foundChannelInSidebar = false;
+    //   for (const [
+    //     cursor,
+    //     unknownItem,
+    //   ] of await globalState.space.sidebarItems.itemCursors()) {
+    //     const item =
+    //       unknownItem.tryCast(Category) || unknownItem.tryCast(Channel);
 
-  //       if (item instanceof Channel && item.id == globalState.channel.id) {
-  //         foundChannelInSidebar = true;
-  //       }
+    //     if (item instanceof Channel && item.id == globalState.channel.id) {
+    //       foundChannelInSidebar = true;
+    //     }
 
-  //       if (item instanceof Category) {
-  //         const categoryItems = item.channels.ids();
-  //         if (item.id !== channelCategoryInput) {
-  //           const thisChannelIdx = categoryItems.indexOf(
-  //             globalState.channel.id,
-  //           );
-  //           if (thisChannelIdx != -1) {
-  //             item.channels.remove(thisChannelIdx);
-  //             item.commit();
-  //           }
-  //         } else if (
-  //           item.id == channelCategoryInput &&
-  //           !categoryItems.includes(globalState.channel.id)
-  //         ) {
-  //           item.channels.push(globalState.channel);
-  //           item.commit();
-  //         }
-  //       } else if (
-  //         item instanceof Channel &&
-  //         channelCategoryInput &&
-  //         item.id == globalState.channel.id
-  //       ) {
-  //         const { offset } = globalState.space.entity.doc.getCursorPos(cursor);
-  //         // globalState.space.sidebarItems.remove(offset);
-  //       }
-  //     }
+    //     if (item instanceof Category) {
+    //       const categoryItems = item.channels.ids();
+    //       if (item.id !== channelCategoryInput) {
+    //         const thisChannelIdx = categoryItems.indexOf(
+    //           globalState.channel.id,
+    //         );
+    //         if (thisChannelIdx != -1) {
+    //           item.channels.remove(thisChannelIdx);
+    //           item.commit();
+    //         }
+    //       } else if (
+    //         item.id == channelCategoryInput &&
+    //         !categoryItems.includes(globalState.channel.id)
+    //       ) {
+    //         item.channels.push(globalState.channel);
+    //         item.commit();
+    //       }
+    //     } else if (
+    //       item instanceof Channel &&
+    //       channelCategoryInput &&
+    //       item.id == globalState.channel.id
+    //     ) {
+    //       const { offset } = globalState.space.entity.doc.getCursorPos(cursor);
+    //       // globalState.space.sidebarItems.remove(offset);
+    //     }
+    //   }
 
-  //     if (!channelCategoryInput && !foundChannelInSidebar) {
-  //       // globalState.space.sidebarItems.push(globalState.channel);
-  //     }
-  //     // globalState.space.commit();
-  //   }
+    //   if (!channelCategoryInput && !foundChannelInSidebar) {
+    //     // globalState.space.sidebarItems.push(globalState.channel);
+    //   }
+    //   // globalState.space.commit();
+    // }
 
-  //   showSettingsDialog = false;
-  // }
+    showSettingsDialog = false;
+  }
 </script>
 
 <menu class="relative flex items-center gap-3 px-2 w-fit justify-end">
@@ -148,14 +149,14 @@
 
   {#if globalState.isAdmin}
     <Dialog
-      title={globalState.channel instanceof Channel
+      title={page.params.channel
         ? "Channel Settings"
         : "Thread Settings"}
       bind:isDialogOpen={showSettingsDialog}
     >
       {#snippet dialogTrigger()}
         <Button.Root
-          title={globalState.channel && globalState.channel.constructor.name === 'Channel'
+          title={page.params.channel
             ? "Channel Settings"
             : "Thread Settings"}
           class="m-auto flex"
@@ -177,15 +178,11 @@
         {#if globalState.space && globalState.channel}
           <select bind:value={channelCategoryInput} class="select">
             <option value={undefined}>None</option>
-            <!-- {#await Space.sidebarItems(globalState.space) then sidebarItems}
-              {@const categories = sidebarItems
-                .map((x) => x.tryCast(Category))
-                .filter((x) => !!x)}
+              
 
               {#each categories as category}
-                <option value={category.id}>{category.name}</option>
+                <option value={category?.id}>{category?.name}</option>
               {/each}
-            {/await} -->
           </select>
         {/if}
         <Button.Root class="dz-btn dz-btn-primary">Save Settings</Button.Root>
@@ -204,13 +201,13 @@
       >
         <h2 class="text-xl font-bold">Danger Zone</h2>
         <p>
-          Deleting a {globalState.channel
+          Deleting a {page.params.channel
             ? "channel"
             : "thread"} doesn't delete the data permanently, it just hides the thread
           from the UI.
         </p>
         <Button.Root class="dz-btn dz-btn-error"
-          >Delete {globalState.channel
+          >Delete {page.params.channel
             ? "Channel"
             : "Thread"}</Button.Root
         >

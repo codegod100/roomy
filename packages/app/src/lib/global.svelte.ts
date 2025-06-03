@@ -63,7 +63,7 @@ export let globalState = $state({
   catalog: undefined as Catalog | undefined | null,
   loadedSpace: undefined as string | undefined,
   space: undefined as Space | undefined | null,
-  channel: undefined as Channel | Thread | undefined | null,
+  channel: undefined as Channel | undefined | null,
   isAdmin: false,
   isBanned: false,
   currentCatalog: "home",
@@ -134,7 +134,7 @@ $effect.root(() => {
             });
 
         }
-        const space = await Space.load(page.params.space, { resolve: { channels: { $each: true } } })
+        const space = await Space.load(page.params.space, { resolve: { channels: { $each: true }, image: true } })
         globalState.loadedSpace = page.params.space!;
         globalState.currentCatalog = page.params.space!;
         console.log("setting space", space?.toJSON())

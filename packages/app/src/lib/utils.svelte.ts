@@ -4,6 +4,7 @@ import type { EntityIdStr } from "@muni-town/leaf";
 import { goto } from "$app/navigation";
 import type { JSONContent } from "@tiptap/core";
 import { type ThemeName } from "./themes";
+import type { Channel } from "./schema";
 
 /** Cleans a handle string by removing any characters not valid for a domain. */
 export function cleanHandle(handle: string): string {
@@ -105,6 +106,8 @@ export function parseMessageContent(bodyJson: string | undefined): JSONContent {
     return {};
   }
 }
+
+
 
 /**
  * Helper that allows you to do something similar to the `$derive` rune but for a function returning
