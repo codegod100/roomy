@@ -4,7 +4,7 @@
   import { Button, Tabs } from "bits-ui";
   import { Category, Channel, Channels, Space, Thread } from "$lib/schema.ts";
   import { globalState } from "$lib/global.svelte";
-  import { Group, Account, CoList } from "jazz-tools";
+  import { Group, Account, CoList, co } from "jazz-tools";
   import { derivePromise, navigate, Toggle } from "$lib/utils.svelte";
   // import { Category, Channel, Thread } from "@roomy-chat/sdk";
   import SpaceSettingsDialog from "$lib/components/SpaceSettingsDialog.svelte";
@@ -89,8 +89,9 @@
     if (!space) return [];
     const threads = space.threads || [];
     const channels = space.channels || [];
+    let categories = space.categories || [];
 
-    return [...channels];
+    return [...channels, ...categories];
   }
 
   $effect(() => {
@@ -129,7 +130,11 @@
     if (!globalState.space) return;
 
     // const category = await globalState.roomy.create(Category);
-    // const category = Category.create({name: newCategoryName})
+    const category = Category.create({name: newCategoryName})
+    if (!globalState.space?.categories){
+      globalState.space.categories = co.list(Category).create([])
+    }
+    globalState.space.categories.push(category)
     // category.name = newCategoryName;
     // category.appendAdminsFrom(globalState.space);
     // category.commit();

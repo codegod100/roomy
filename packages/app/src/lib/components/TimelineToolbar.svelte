@@ -9,6 +9,7 @@
   import Dialog from "$lib/components/Dialog.svelte";
   import { getContext, untrack } from "svelte";
   import { toast } from "svelte-french-toast";
+  import { co } from "jazz-tools";
 
   let { createThread, threadTitleInput = $bindable() } = $props();
   let isThreading: { value: false } = getContext("isThreading");
@@ -23,20 +24,6 @@
     untrack(() => {
       channelNameInput = globalState.channel?.name || "";
       channelCategoryInput = undefined;
-      // globalState.space &&
-      //   globalState.space.sidebarItems.items().then((items) => {
-      //     for (const item of items) {
-      //       const category = item.tryCast(Category);
-      //       if (
-      //         category &&
-      //         globalState.channel &&
-      //         category.channels.ids().includes(globalState.channel.id)
-      //       ) {
-      //         channelCategoryInput = category.id;
-      //         return;
-      //       }
-      //     }
-      //   });
     });
   });
 
@@ -44,55 +31,16 @@
     if (!globalState.space || !globalState.channel) return;
     if (channelNameInput) {
       globalState.channel.name = channelNameInput;
-      // globalState.channel.commit();
     }
-
-    // if (globalState.channel) {
-    //   let foundChannelInSidebar = false;
-    //   for (const [
-    //     cursor,
-    //     unknownItem,
-    //   ] of await globalState.space.sidebarItems.itemCursors()) {
-    //     const item =
-    //       unknownItem.tryCast(Category) || unknownItem.tryCast(Channel);
-
-    //     if (item instanceof Channel && item.id == globalState.channel.id) {
-    //       foundChannelInSidebar = true;
-    //     }
-
-    //     if (item instanceof Category) {
-    //       const categoryItems = item.channels.ids();
-    //       if (item.id !== channelCategoryInput) {
-    //         const thisChannelIdx = categoryItems.indexOf(
-    //           globalState.channel.id,
-    //         );
-    //         if (thisChannelIdx != -1) {
-    //           item.channels.remove(thisChannelIdx);
-    //           item.commit();
-    //         }
-    //       } else if (
-    //         item.id == channelCategoryInput &&
-    //         !categoryItems.includes(globalState.channel.id)
-    //       ) {
-    //         item.channels.push(globalState.channel);
-    //         item.commit();
-    //       }
-    //     } else if (
-    //       item instanceof Channel &&
-    //       channelCategoryInput &&
-    //       item.id == globalState.channel.id
-    //     ) {
-    //       const { offset } = globalState.space.entity.doc.getCursorPos(cursor);
-    //       // globalState.space.sidebarItems.remove(offset);
-    //     }
-    //   }
-
-    //   if (!channelCategoryInput && !foundChannelInSidebar) {
-    //     // globalState.space.sidebarItems.push(globalState.channel);
-    //   }
-    //   // globalState.space.commit();
-    // }
-
+    const category = categories.find((c) => c?.id == channelCategoryInput);
+    if(category && channelCategoryInput){
+      if(!category?.channels){
+        category.channels = co.list(Channel).create([]);
+      }
+      if(!category.channels.includes(globalState.channel)){
+        category.channels.push(globalState.channel);
+      }
+    }
     showSettingsDialog = false;
   }
 </script>
