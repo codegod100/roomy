@@ -12,7 +12,7 @@ import {Space,Image} from "$lib/schema"
   import { page } from "$app/stores";
 
   type Props = {
-    space: Space | null | undefined;
+    space: Space;
     i: number;
   };
 
@@ -22,9 +22,9 @@ import {Space,Image} from "$lib/schema"
   let activeTooltip = $state("");
   let tooltipPosition = $state({ x: 0, y: 0 });
 
-  let isActive = $derived($page.url.pathname.includes(space?.id || ''));
+  let isActive = $derived($page.url.pathname.includes(space.internal?.id || ''));
 
-  const spaceImage = space?.image
+  const spaceImage = space.internal?.image
 </script>
 
 <TooltipPortal
@@ -34,7 +34,7 @@ import {Space,Image} from "$lib/schema"
   y={tooltipPosition.y}
 />
 <ContextMenu
-  menuTitle={space?.name}
+  menuTitle={space.internal?.name}
   items={[
     {
       label: "Leave Space",
@@ -49,10 +49,10 @@ import {Space,Image} from "$lib/schema"
   <button
     type="button"
     onclick={() =>
-      navigate({ space: space?.id || ""})}
-    value={space?.id}
+      navigate({ space: space.internal?.id || ""})}
+    value={space.internal?.id}
     onmouseenter={(e: Event) => {
-      activeTooltip = space?.name || "";
+      activeTooltip = space.internal?.name || "";
       const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
       tooltipPosition = { x: rect.right + 8, y: rect.top + rect.height / 2 };
     }}
@@ -70,12 +70,12 @@ import {Space,Image} from "$lib/schema"
       {#if spaceImage?.uri}
         <img
           src={spaceImage?.uri}
-          alt={space?.name || ""}
+          alt={space.internal?.name || ""}
           class="w-10 h-10 object-cover rounded-full object-center"
         />
-      {:else if space && space.id}
+      {:else if space.internal?.id}
         <div class="w-10 h-10">
-          <AvatarMarble name={space.id} />
+          <AvatarMarble name={space.internal?.id} />
         </div>
       {:else}
         <div class="w-10 h-10 bg-base-300 rounded-full"></div>

@@ -2,7 +2,11 @@
   import "../app.css";
   import { Button } from "bits-ui";
   import { goto } from "$app/navigation";
+  import { page } from '$app/state';
+
+  console.log("error", page.status, page.error)
 </script>
+
 
 <div class="dz-hero bg-base-200 min-h-screen">
   <div class="dz-hero-content">

@@ -6,58 +6,54 @@
   import { navigateSync } from "$lib/utils.svelte";
   import Icon from "@iconify/svelte";
   // import { Category, Channel } from "@roomy-chat/sdk";
-  import { Category, Channel } from "$lib/schema.ts";
+  import { Category, Channel, Space } from "$lib/schema.ts";
   import { Accordion, Button } from "bits-ui";
   import { slide } from "svelte/transition";
   import Dialog from "./Dialog.svelte";
 
   const channels = $derived.by(
-    () => {
-      const channels = globalState.space?.channels?.filter((channel) => {
-        const inCategory = globalState.space?.categories?.some((category) => {
-          // console.log(category?.channels?.map((c) => c?.toJSON()))
-          return category?.channels?.map(c => c?.id).includes(channel?.id)
-        })
-        console.log(channel?.name, inCategory)
-        return !channel?.softDeleted && !inCategory
-      })
-      return channels || []
+    async() => {
+      const spaceId = page.params.space
+      if(!spaceId) return []
+      const space = await Space.load(spaceId)
+      return space.channels
     }
   );
-  const categories = $derived.by(
-    () => {
-      const categories = globalState.space?.categories?.filter(
-        (category) => !category?.softDeleted,
-      )
-      return categories || []
-    }
-  );
+
+  // const categories = $derived.by(
+  //   () => {
+  //     const categories = globalState.space?.categories?.filter(
+  //       (category) => !category?.softDeleted,
+  //     )
+  //     return categories || []
+  //   }
+  // );
   //
   // Delete Channel/Thread
   //
-  async function deleteItem(item: Channel | Category) {
-    if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
-    item.softDeleted = true;
-    // item.commit();
-  }
+  // async function deleteItem(item: Channel | Category) {
+  //   if (!confirm(`Are you sure you want to delete "${item.name}"?`)) return;
+  //   item.softDeleted = true;
+  //   // item.commit();
+  // }
 
   //
   // Category Edit Dialog
   //
-  let showCategoryDialog = $state(false);
-  let editingCategory = $state(undefined) as undefined | Category;
-  let categoryNameInput = $state("");
-  function saveCategory() {
-    if (!editingCategory) return;
-    editingCategory.name = categoryNameInput;
-    // editingCategory.commit();
-    showCategoryDialog = false;
-  }
+  // let showCategoryDialog = $state(false);
+  // let editingCategory = $state(undefined) as undefined | Category;
+  // let categoryNameInput = $state("");
+  // function saveCategory() {
+  //   if (!editingCategory) return;
+  //   editingCategory.name = categoryNameInput;
+  //   // editingCategory.commit();
+  //   showCategoryDialog = false;
+  // }
 </script>
 
 <div transition:slide={{ duration: 100 }} class="flex flex-col gap-2 px-2">
   <!-- Category and Channels -->
-  {#each categories as category}
+  <!-- {#each categories as category}
     <Accordion.Root type="single" value={category?.name}>
       <Accordion.Item value={category?.name}>
         <Accordion.Header class="flex w-full justify-between">
@@ -168,13 +164,14 @@
         </Accordion.Content>
       </Accordion.Item>
     </Accordion.Root>
-  {/each}
-  {#each channels as channel}
+  {/each} -->
+  {#await channels then channels}
+    {#each channels as channel}
     <div class="group flex items-center gap-1">
       <Button.Root
         href={navigateSync({
-          space: page.params.space!,
-          channel: channel?.id,
+          space: page.params.space,
+          channel: channel.internal?.id,
         })}
         class="flex-1 cursor-pointer px-1 dz-btn dz-btn-ghost justify-start border {channel?.id ===
         page.params.channel
@@ -183,7 +180,7 @@
       >
         <h3 class="flex justify-start items-center w-full gap-2">
           <Icon icon="basil:comment-solid" class="shrink-0" />
-          <span class="truncate"> {channel?.name} </span>
+          <span class="truncate"> {channel.internal?.name} </span>
         </h3>
       </Button.Root>
       {#if globalState.isAdmin}
@@ -197,4 +194,5 @@
       {/if}
     </div>
   {/each}
+{/await}
 </div>

@@ -9,19 +9,16 @@
   //   type EntityIdStr,
   //   type Timeline,
   // } from "@roomy-chat/sdk";
-  import {Channel, Message} from "$lib/schema"
-  import { derivePromise } from "$lib/utils.svelte";
+  import { Channel, Message } from "$lib/schema";
   import { page } from "$app/state";
   import { globalState } from "$lib/global.svelte";
-
+  import { ChannelState } from "$lib/state/messages.svelte.ts";
+  let messages = $derived(ChannelState.messages)
   let {
-    timeline,
     virtualizer = $bindable(),
   }: {
-    timeline: Channel;
     virtualizer?: Virtualizer<string>;
   } = $props();
-
 
   let viewport: HTMLDivElement = $state(null!);
   // let messagesLoaded = $state(false);
@@ -32,35 +29,39 @@
   //   if (idx !== -1 && virtualizer) virtualizer.scrollToIndex(idx);
   // });
 
-  const messages = $derived(globalState.channel?.messages?.filter((message) => message) || [])
-
-  $effect(() => {
-    page.route; // Scroll-to-end when route changes
-
-    if (!viewport || !virtualizer) return;
-    if(messages){
-      virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+  $inspect(messages).with(async (_, messages) => {
+    console.log(messages);
+    for (const message of messages) {
+      console.log(message.internal?.toJSON());
     }
   });
+
+  // $effect(() => {
+  //   page.route; // Scroll-to-end when route changes
+
+  //   if (!viewport || !virtualizer) return;
+  //   if(messages){
+  //     virtualizer.scrollToIndex(messages.length - 1, { align: "end" });
+  //   }
+  // });
 
   function shouldMergeWithPrevious(
     message: Message,
     previousMessage?: Message,
   ): boolean {
-    if(!previousMessage){
+    if (!previousMessage) {
       return false;
     }
-    const areMessages =
-    !previousMessage?.softDeleted;
+    const areMessages = !previousMessage?.internal?.softDeleted;
 
     const authorsAreSame =
       areMessages &&
-      message.profile.handle ==
-        previousMessage.profile.handle;
+      message.internal?.profile?.handle ==
+        previousMessage.internal?.profile?.handle;
 
     const messagesWithin5Minutes =
-      (message.createdDate?.getTime() || 0) -
-        (previousMessage?.createdDate?.getTime() || 0) <
+      (message.internal?.createdDate?.getTime() || 0) -
+        (previousMessage?.internal?.createdDate?.getTime() || 0) <
       60 * 1000 * 5;
 
     // const areAnnouncements =
@@ -74,9 +75,8 @@
     //   previousMessage.relatedThreads.ids()[0] ==
     //     message.relatedThreads.ids()[0];
 
-    const mergeWithPrevious =
-      (authorsAreSame && messagesWithin5Minutes);
-      
+    const mergeWithPrevious = authorsAreSame && messagesWithin5Minutes;
+
     return mergeWithPrevious;
   }
 </script>
@@ -115,18 +115,19 @@
         {#key viewport}
           <Virtualizer
             bind:this={virtualizer}
-            data={messages || []}
-            getKey={(message) => message.id}
+            data={messages}
+            getKey={(message: Message) => message.internal?.id}
             scrollRef={viewport}
           >
             {#snippet children(message: Message, index: number)}
-
-              {#if !message.softDeleted && message.profile}
-                {@const isLinkThread = globalState.channel?.name === "@links"}
+              {#if !message.internal?.softDeleted && message.internal?.profile}
                 <ChatMessage
                   {message}
-                  mergeWithPrevious={shouldMergeWithPrevious(message, messages[index - 1])}
-                  type={isLinkThread ? "link" : "message"}
+                  mergeWithPrevious={shouldMergeWithPrevious(
+                    message,
+                    messages[index - 1],
+                  )}
+                  type={"message"}
                 />
               {:else}
                 <p class="italic text-error text-sm">

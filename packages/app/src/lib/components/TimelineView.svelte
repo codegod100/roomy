@@ -8,10 +8,8 @@
   import Icon from "@iconify/svelte";
   import ChatArea from "$lib/components/ChatArea.svelte";
   import ChatInput from "$lib/components/ChatInput.svelte";
-  import AvatarImage from "$lib/components/AvatarImage.svelte";
   import { Button, Tabs } from "bits-ui";
-import {co,z} from "jazz-tools"
-  import { derivePromise } from "$lib/utils.svelte";
+  import { co } from "jazz-tools";
   import { collectLinks, tiptapJsontoString } from "$lib/utils/collectLinks";
   import { globalState } from "$lib/global.svelte";
   // import {
@@ -21,7 +19,7 @@ import {co,z} from "jazz-tools"
   //   Thread,
   //   Timeline,
   // } from "@roomy-chat/sdk";
-  import { Channel, Message, Messages, Profile, Thread } from "$lib/schema";
+  import { Message, Thread } from "$lib/schema";
   import type { JSONContent } from "@tiptap/core";
   import { getProfile } from "$lib/profile.svelte";
   import TimelineToolbar from "$lib/components/TimelineToolbar.svelte";
@@ -33,10 +31,12 @@ import {co,z} from "jazz-tools"
   import type { Virtualizer } from "virtua/svelte";
   import { focusOnRender } from "$lib/actions/useFocusOnRender.svelte";
   import { threads } from "$lib/thread.svelte";
-  console.log("timelineview")
+  import { ChannelState, loadMessages } from "$lib/state/messages.svelte.ts";
+  console.log("timelineview");
+  loadMessages()
   let selectedMessages = $derived(threads.selected);
-
-  let messages = $derived(globalState.channel?.messages)
+  let messages = $derived(ChannelState.messages);
+  let channel = $derived(ChannelState.channel);
 
   // Helper function to extract text content from TipTap JSON content
   function extractTextContent(parsedBody: Record<string, unknown>): string {
@@ -97,16 +97,16 @@ import {co,z} from "jazz-tools"
     }
   }
 
-  $effect(() => {
-    updateTabFromHash();
-  });
+  // $effect(() => {
+  //   updateTabFromHash();
+  // });
 
   // Update the hash when tab changes
-  $effect(() => {
-    if (tab) {
-      window.location.hash = tab;
-    }
-  });
+  // $effect(() => {
+  //   if (tab) {
+  //     window.location.hash = tab;
+  //   }
+  // });
 
   let messageInput: JSONContent = $state({});
 
@@ -114,8 +114,7 @@ import {co,z} from "jazz-tools"
   let isThreading = $state({ value: false });
   let threadTitleInput = $state("");
   // let selectedMessages: Message[] = $state([]);
-  
- 
+
   setContext("isThreading", isThreading);
   // setContext("selectMessage", (message) => {
   //   console.log("attempting push")
@@ -150,7 +149,7 @@ import {co,z} from "jazz-tools"
 
   // Function to handle search result click
   function handleSearchResultClick(messageId: string) {
-    console.log("result clicked")
+    console.log("result clicked");
     // Hide search results
     showSearchResults = false;
 
@@ -164,7 +163,7 @@ import {co,z} from "jazz-tools"
       }
 
       const messageIndex = ids?.indexOf(messageId as `co_${string}`);
-      console.log("message index", messageIndex)
+      console.log("message index", messageIndex);
       if (messageIndex !== -1) {
         virtualizer?.scrollToIndex(messageIndex);
       } else {
@@ -176,34 +175,33 @@ import {co,z} from "jazz-tools"
   }
 
   // Index existing messages when timeline items are loaded
-  $effect(() => {
-    if (searchIndex && globalState.channel?.messages) {
-      const messages = globalState.channel?.messages;
-      // items() returns a Promise, unlike ids() which returns an array directly
-      // Clear index before re-indexing to avoid duplicates
-      searchIndex.clear();
-      if (messages) {
-        for (const message of messages) {
-          if (message) {
-            // Try parsing the message body
-            const parsedBody = JSON.parse(message.body);
+  // $effect(() => {
+  //   if (searchIndex && globalState.channel?.messages) {
+  //     const messages = globalState.channel?.messages;
+  //     // items() returns a Promise, unlike ids() which returns an array directly
+  //     // Clear index before re-indexing to avoid duplicates
+  //     searchIndex.clear();
+  //     if (messages) {
+  //       for (const message of messages) {
+  //         if (message) {
+  //           // Try parsing the message body
+  //           const parsedBody = JSON.parse(message.body);
 
-            // Extract text content from the parsed body
-            const textContent = extractTextContent(parsedBody);
+  //           // Extract text content from the parsed body
+  //           const textContent = extractTextContent(parsedBody);
 
-            if (textContent) {
-              searchIndex.add(message.id, textContent);
-            }
-          }
-        }
-      }
-    }
-  });
+  //           if (textContent) {
+  //             searchIndex.add(message.id, textContent);
+  //           }
+  //         }
+  //       }
+  //     }
+  //   }
+  // });
 
   async function createThread(e: SubmitEvent) {
     e.preventDefault();
-    if (!globalState.space || !globalState.channel)
-      return;
+    if (!globalState.space || !globalState.channel) return;
     let thread = Thread.create({
       name: threadTitleInput,
       channel: globalState.channel,
@@ -211,14 +209,16 @@ import {co,z} from "jazz-tools"
     thread.messages = co.list(Message).create([]);
     // messages can be selected in any order
     // sort them on create based on their position from the channel
-    let channelMessageIds = globalState.channel.messages?.filter((message) => message !== null).map((message) => message.id) || [];
+    let channelMessageIds =
+      globalState.channel.messages
+        ?.filter((message) => message !== null)
+        .map((message) => message.id) || [];
     selectedMessages.sort((a, b) => {
       return channelMessageIds.indexOf(a.id) - channelMessageIds.indexOf(b.id);
     });
-    if(!globalState.space.threads){
+    if (!globalState.space.threads) {
       globalState.space.threads = co.list(Thread).create([]);
-    } 
-    
+    }
 
     for (const message of selectedMessages) {
       // move selected message ID from channel to thread timeline
@@ -265,13 +265,10 @@ import {co,z} from "jazz-tools"
   }
 
   async function sendMessage() {
-    if (!globalState.space || !globalState.channel || !user.agent) return;
-
     // Image upload is now handled in ChatInput.svelte
-    console.log("creating message", JSON.stringify(messageInput))
     const did = user.agent.did;
-    if(!did){
-      throw "missing did from agent"
+    if (!did) {
+      throw "missing did from agent";
     }
     const profileMeta = await getProfile(did);
     // const profileMeta = {
@@ -279,16 +276,19 @@ import {co,z} from "jazz-tools"
     //   displayName: "",
     //   avatarUrl: "",
     // }
-    const profile = Profile.create({
+    const profile = {
       handle: profileMeta.handle,
       displayName: profileMeta.displayName || "",
       avatarUrl: profileMeta.avatarUrl,
-    })
+    };
     const message = Message.create({
       body: JSON.stringify(messageInput),
       profile,
     });
-    console.log("ACCOUNT", globalState.account.current)
+    ChannelState.channel.addMessage(message);
+    ChannelState.messages.push(message);
+
+    // messages = Promise.resolve(m)
     // console.log(message.toJSON())
     // if (replyingTo) message.replyTo = replyingTo;
 
@@ -312,45 +312,37 @@ import {co,z} from "jazz-tools"
       //   links.value.commit();
       // }
     }
-    const messages = globalState.channel.messages || co.list(Message).create([])
-    console.log("messs", messages.toJSON())
-    messages.push(message)
-    globalState.channel.messages = messages
-    // const holder = globalState.channel.messages;
-    // globalState.channel.messages = co.list(z.string()).create([]);
-    const channel = await Channel.load(globalState.channel.id, {resolve: {messages: {$each: true}}})
-    console.log("channel?", channel.toJSON())
-    globalState.channel = channel
+
     messageInput = {};
     replyingTo = undefined;
   }
 
   // Handle search input
-  $effect(() => {
-    if (searchIndex && searchQuery) {
-      // Perform synchronous search
-      const results = searchIndex.search(searchQuery);
+  // $effect(() => {
+  //   if (searchIndex && searchQuery) {
+  //     // Perform synchronous search
+  //     const results = searchIndex.search(searchQuery);
 
-      if (results.length > 0) {
-        showSearchResults = true;
+  //     if (results.length > 0) {
+  //       showSearchResults = true;
 
-        // Get the actual Message objects for the search results
-        if (globalState.channel.messages) {
-          const messages = globalState.channel.messages;
-          searchResults = messages.filter(
-            (msg): msg is Message =>
-              msg !== null && msg !== undefined && results.includes(msg.id),
-          );
-        }
-      } else {
-        searchResults = [];
-        showSearchResults = searchQuery.length > 0;
-      }
-    } else {
-      searchResults = [];
-      showSearchResults = false;
-    }
-  });
+  //       // Get the actual Message objects for the search results
+  //       if (globalState.channel.messages) {
+  //         const messages = globalState.channel.messages;
+  //         searchResults = messages.filter(
+  //           (msg): msg is Message =>
+  //             msg !== null && msg !== undefined && results.includes(msg.id),
+  //         );
+  //       }
+  //     } else {
+  //       searchResults = [];
+  //       showSearchResults = searchQuery.length > 0;
+  //     }
+  //   } else {
+  //     searchResults = [];
+  //     showSearchResults = false;
+  //   }
+  // });
 
   // let relatedThreads = derivePromise([], async () =>
   //   globalState.channel && globalState.channel instanceof Channel
@@ -358,15 +350,15 @@ import {co,z} from "jazz-tools"
   //     : [],
   // );
 
-  const pages = $derived.by(()=> {
-    if(!globalState.space?.wikipages) return []
-    return globalState.space.wikipages.filter(page => page !== null && !page.softDeleted)
-  });
+  // const pages = $derived.by(()=> {
+  //   if(!globalState.space?.wikipages) return []
+  //   return globalState.space.wikipages.filter(page => page !== null && !page.softDeleted)
+  // });
 
-  const relatedThreads = $derived.by(()=> {
-    if(!globalState.space?.threads) return []
-    return globalState.space.threads.filter(thread => thread !== null && !thread.softDeleted)
-  });
+  // const relatedThreads = $derived.by(()=> {
+  //   if(!globalState.space?.threads) return []
+  //   return globalState.space.threads.filter(thread => thread !== null && !thread.softDeleted)
+  // });
 </script>
 
 <header class="dz-navbar">
@@ -379,9 +371,7 @@ import {co,z} from "jazz-tools"
         title={"Channel"}
       >
         <span class="flex gap-2 items-center">
-          <Icon
-            icon={"basil:comment-solid"}
-          />
+          <Icon icon={"basil:comment-solid"} />
           {globalState.channel.name}
         </span>
       </h4>
@@ -440,64 +430,60 @@ import {co,z} from "jazz-tools"
     No threads for this channel.
   </BoardList>
 {:else if tab === "chat"}
-  {#if globalState.space && globalState.channel}
-    <div class="flex h-full flex-col">
-      {#if showSearchInput}
-        <div
-          class="flex items-center border-b border-gray-200 dark:border-gray-700 px-2 py-1"
-        >
-          <Icon icon="tabler:search" class="text-base-content/50 mr-2" />
-          <input
-            type="text"
-            placeholder="Search messages..."
-            bind:value={searchQuery}
-            use:focusOnRender
-            class="input input-sm input-ghost w-full focus:outline-none"
-            autoComplete="off"
-          />
-          <button
-            class="btn btn-ghost btn-sm btn-circle"
-            onclick={() => {
-              searchQuery = "";
-              showSearchInput = false;
-              showSearchResults = false;
-            }}
-          >
-            <Icon icon="tabler:x" class="text-base-content/50" />
-          </button>
-        </div>
-
-        {#if showSearchResults}
-          <div class="relative">
-            <div class="absolute z-20 w-full">
-              <SearchResults
-                messages={searchResults}
-                query={searchQuery}
-                onMessageClick={handleSearchResultClick}
-                onClose={() => {
-                  showSearchResults = false;
-                }}
-              />
-            </div>
-          </div>
-        {/if}
-      {/if}
+  <div class="flex h-full flex-col">
+    {#if showSearchInput}
       <div
-        class="flex-grow overflow-auto relative"
-        style="max-height: calc(100vh - 180px);"
+        class="flex items-center border-b border-gray-200 dark:border-gray-700 px-2 py-1"
       >
-        <ChatArea
-          timeline={messages}
-          bind:virtualizer
+        <Icon icon="tabler:search" class="text-base-content/50 mr-2" />
+        <input
+          type="text"
+          placeholder="Search messages..."
+          bind:value={searchQuery}
+          use:focusOnRender
+          class="input input-sm input-ghost w-full focus:outline-none"
+          autoComplete="off"
         />
+        <button
+          class="btn btn-ghost btn-sm btn-circle"
+          onclick={() => {
+            searchQuery = "";
+            showSearchInput = false;
+            showSearchResults = false;
+          }}
+        >
+          <Icon icon="tabler:x" class="text-base-content/50" />
+        </button>
+      </div>
 
-        {#if replyingTo}
-          <div
-            class="reply-container flex justify-between bg-secondary text-secondary-content rounded-t-lg px-4 py-2 absolute bottom-0 left-0 right-0"
-          >
-            <div class="flex items-center gap-2 overflow-hidden">
-              <span>Replying to</span>
-              <!-- {#await getProfile(replyingTo.authors( (x) => x.get(0), )) then profile}
+      {#if showSearchResults}
+        <div class="relative">
+          <div class="absolute z-20 w-full">
+            <SearchResults
+              messages={searchResults}
+              query={searchQuery}
+              onMessageClick={handleSearchResultClick}
+              onClose={() => {
+                showSearchResults = false;
+              }}
+            />
+          </div>
+        </div>
+      {/if}
+    {/if}
+    <div
+      class="flex-grow overflow-auto relative"
+      style="max-height: calc(100vh - 180px);"
+    >
+      <ChatArea bind:virtualizer />
+
+      {#if replyingTo}
+        <div
+          class="reply-container flex justify-between bg-secondary text-secondary-content rounded-t-lg px-4 py-2 absolute bottom-0 left-0 right-0"
+        >
+          <div class="flex items-center gap-2 overflow-hidden">
+            <span>Replying to</span>
+            <!-- {#await getProfile(replyingTo.authors( (x) => x.get(0), )) then profile}
                 <AvatarImage
                   handle={profile.handle || ""}
                   avatarUrl={profile.avatarUrl}
@@ -505,61 +491,48 @@ import {co,z} from "jazz-tools"
                 />
                 <strong>{profile.handle}</strong>
               {/await} -->
-              <p
-                class="text-primary-content text-ellipsis italic max-h-12 overflow-hidden ml-2 contain-images-within"
-              >
-                {@html getContentHtml(JSON.parse(replyingTo.body))}
-              </p>
-            </div>
-            <Button.Root
-              type="button"
-              onclick={() => (replyingTo = undefined)}
-              class="dz-btn dz-btn-circle dz-btn-ghost flex-shrink-0"
+            <p
+              class="text-primary-content text-ellipsis italic max-h-12 overflow-hidden ml-2 contain-images-within"
             >
-              <Icon icon="zondicons:close-solid" />
-            </Button.Root>
+              {@html getContentHtml(JSON.parse(replyingTo.body))}
+            </p>
           </div>
-        {/if}
-      </div>
-
-      <div>
-        {#if !isMobile || !isThreading.value}
-          <div class="chat-input-container">
-            {#if true}
-              {#if !readonly}
-                <ChatInput
-                  bind:content={messageInput}
-                  users={[]}
-                  context={[]}
-                  onEnter={sendMessage}
-                />
-              {:else}
-                <div class="flex items-center grow flex-col">
-                  <Button.Root disabled class="w-full dz-btn"
-                    >Automatted Thread</Button.Root
-                  >
-                </div>
-              {/if}
-            {:else}
-              <Button.Root
-                class="w-full dz-btn"
-                onclick={() => {
-                  // if (globalState.space && globalState.roomy) {
-                  //   globalState.roomy.spaces.push(globalState.space);
-                  //   globalState.roomy.commit();
-                  // }
-                }}>Join Space To Chat</Button.Root
-              >
-            {/if}
-          </div>
-        {/if}
-
-        {#if isMobile}
-          <!-- <TimelineToolbar {createThread} bind:threadTitleInput /> -->
-        {/if}
-      </div>
+          <Button.Root
+            type="button"
+            onclick={() => (replyingTo = undefined)}
+            class="dz-btn dz-btn-circle dz-btn-ghost flex-shrink-0"
+          >
+            <Icon icon="zondicons:close-solid" />
+          </Button.Root>
+        </div>
+      {/if}
     </div>
-  {/if}
+
+    <div>
+      {#if !isMobile || !isThreading.value}
+        <div class="chat-input-container">
+          {#if !readonly}
+            <ChatInput
+              bind:content={messageInput}
+              users={[]}
+              context={[]}
+              onEnter={sendMessage}
+            />
+          {:else}
+            <div class="flex items-center grow flex-col">
+              <Button.Root disabled class="w-full dz-btn"
+                >Automatted Thread</Button.Root
+              >
+            </div>
+          {/if}
+        </div>
+      {/if}
+
+      {#if isMobile}
+        <!-- <TimelineToolbar {createThread} bind:threadTitleInput /> -->
+      {/if}
+    </div>
+  </div>
 {/if}
 
 <style>

@@ -9,22 +9,22 @@
   import ThemeSelector from "$lib/components/ThemeSelector.svelte";
   import SidebarSpace from "$lib/components/SidebarSpace.svelte";
   // import { Space } from "@roomy-chat/sdk";
-  import { Space, Spaces } from "$lib/schema.ts";
+  import { Catalog, Space } from "$lib/schema.ts";
   import { cleanHandle } from "$lib/utils.svelte";
   import { atproto } from "$lib/atproto.svelte";
   import { focusOnRender } from "$lib/actions/useFocusOnRender.svelte";
   import { env } from "$env/dynamic/public";
-  import {Group} from "jazz-tools"
+  import { Group } from "jazz-tools";
   import JSZip from "jszip";
   import FileSaver from "file-saver";
 
-  let {
-    spaces,
-    visible,
-  }: {
-    spaces: Spaces | undefined | null;
-    visible: boolean;
-  } = $props();
+  // let {
+  //   spaces,
+  //   visible,
+  // }: {
+  //   spaces: Spaces | undefined | null;
+  //   visible: boolean;
+  // } = $props();
   let handleInput = $state("");
   let loginLoading = $state(false);
   let signupLoading = $state(false);
@@ -33,28 +33,28 @@
   let newSpaceName = $state("");
   let isNewSpaceDialogOpen = $state(false);
 
-  async function createSpace() {
-    // if (!newSpaceName || !user.agent || !globalState.roomy) return;
-    // const space = await globalState.roomy.create(Space);
-    const space = Space.create({ name: newSpaceName }, {owner: Group.create()});
-    // space.admins((x) => user.agent && x.push(user.agent.assertDid));
-    // space.commit();
-    if (globalState.catalog) {
-      if (!globalState.catalog?.spaces) {
-        console.log("creating new spaces list for catalog");
-        globalState.catalog.spaces = Spaces.create([space]);
-      } else {
-        console.log("pushing space to catalog");
-        globalState.catalog.spaces.push(space);
-      }
-    }
+  // async function createSpace() {
+  //   // if (!newSpaceName || !user.agent || !globalState.roomy) return;
+  //   // const space = await globalState.roomy.create(Space);
+  //   const space = Space.create({ name: newSpaceName }, {owner: Group.create()});
+  //   // space.admins((x) => user.agent && x.push(user.agent.assertDid));
+  //   // space.commit();
+  //   if (globalState.catalog) {
+  //     if (!globalState.catalog?.spaces) {
+  //       console.log("creating new spaces list for catalog");
+  //       globalState.catalog.spaces = Spaces.create([space]);
+  //     } else {
+  //       console.log("pushing space to catalog");
+  //       globalState.catalog.spaces.push(space);
+  //     }
+  //   }
 
-    // globalState.roomy.spaces.push(space);
-    // globalState.roomy.commit();
-    newSpaceName = "";
+  //   // globalState.roomy.spaces.push(space);
+  //   // globalState.roomy.commit();
+  //   newSpaceName = "";
 
-    isNewSpaceDialogOpen = false;
-  }
+  //   isNewSpaceDialogOpen = false;
+  // }
 
   let loginError = $state("");
 
@@ -103,6 +103,8 @@
     }
   }
 
+  let visible = true;
+
   // async function exportZip() {
   //   var metadata: { Type: string; Version: string; [key: string]: any } = {
   //     Type: "RoomyData",
@@ -129,6 +131,19 @@
   //     FileSaver.saveAs(content, "roomy-data.zip");
   //   });
   // }
+
+  let catalog = $derived.by(() => {
+    if (user.agent && user.catalogId.value) {
+      return Catalog.load(user.catalogId.value);
+    }
+    return Promise.resolve(new Catalog());
+  });
+
+  $inspect(catalog).with(async (_, catalog) => {
+    const c = await catalog;
+    console.log(c.internal?.toJSON());
+    console.log(c.spaces)
+  });
 </script>
 
 <!-- Width manually set for transition to w-0 -->
@@ -184,11 +199,11 @@
     {/if}
 
     <div class="divider my-0"></div>
-    {#if spaces}
-      {#each spaces as space, i}
+    {#await catalog then catalog}
+      {#each catalog.spaces as space, i}
         <SidebarSpace {space} {i} />
       {/each}
-    {/if}
+    {/await}
   </div>
 
   <section class="flex flex-col items-center gap-2 p-0">

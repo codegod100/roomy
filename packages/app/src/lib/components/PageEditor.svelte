@@ -8,7 +8,7 @@
   import Link from "@tiptap/extension-link";
   import { BlockNoteEditor } from "@blocknote/core";
   import "@blocknote/core/style.css";
-  import { WikiPage } from "$lib/schema";
+  import { Page } from "$lib/schema";
 
   // import { page } from "$app/state";
   import { globalState, waitForValue } from "$lib/global.svelte";

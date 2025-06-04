@@ -15,7 +15,7 @@ import type { Agent } from "@atproto/api";
 import { page } from "$app/state";
 import { untrack } from "svelte";
 
-import { Space, Channel, Thread, Catalog, Messages, AccountSchema } from "./schema.ts";
+import { Space, Channel, Thread, Catalog,AccountSchema } from "./schema.ts";
 
 // import * as roomy from "@roomy-chat/sdk";
 import { navigate, resolveLeafId } from "./utils.svelte";
@@ -70,112 +70,122 @@ export let globalState = $state({
   account,
 });
 
-$effect.root(() => {
-  // Redirect to the `/-/space.domain` or `/co_id` as appropriate.
-  $effect(() => {
-    if (
-      (page.params.space &&
-        page.params.spaceIndicator !== undefined &&
-        page.params.space.startsWith("co_")) ||
-      (page.params.space &&
-        page.params.spaceIndicator === undefined &&
-        !page.params.space.startsWith("co_"))
-    ) {
-      navigate({
-        space: page.params.space,
-        channel: page.params.channel,
-        thread: page.params.thread,
-      });
-    }
-  });
 
-  // Reload Roomy peer when login changes.
-  $effect(() => {
-    if (user.agent && user.catalogId.value) {
-      console.log("user.agent", user.agent)
-      if (!globalState.catalog) {
-        Catalog.load(user.catalogId.value, { resolve: { spaces: { $each: true } } }).then((catalog) => {
-          console.log("catalog", catalog?.toJSON())
-          globalState.catalog = catalog
-        })
-      }
-      // Initialize new roomy instance
-      // initRoomy(user.agent).then((roomy) => (globalState.roomy = roomy));
-    }
-  });
+// $effect(() => {
+//   if (page.params.space) {
+//     navigate({
+//       space: page.params.space,
+//       channel: page.params.channel,
+//       thread: page.params.thread,
+//     });
+//   }
+// });
 
-  /** Update the global space and channel when the route changes. */
-  $effect(() => {
-    page.url.pathname;
-    page.params.space;
-    // if (!globalState.roomy) return;
-    untrack(async () => {
-      await waitForValue(() => user.agent)
-      if (page.url.pathname === "/home") {
-        globalState.currentCatalog = "home";
-        return
-      }
-      if (page.params.space) {
-        if (page.params.space.includes(".")) {
-          return resolveLeafId(page.params.space).then(async (id) => {
-            if (!id) {
-              console.error("Leaf ID not found for domain:", page.params.space);
-              navigate("home");
-              return;
-            }
-            const space = await Space.load(id, { resolve: { channels: { $each: true } } })
-            globalState.loadedSpace = page.params.space!;
-            globalState.currentCatalog = id;
-            console.log("setting space", space?.toJSON())
-            globalState.space = space;
-          })
-            .catch((e) => {
-              console.error(e);
-            });
+// $effect.root(() => {
+//   // Redirect to the `/-/space.domain` or `/co_id` as appropriate.
+//   $effect(() => {
+//     if (
+//       (page.params.space &&
+//         page.params.spaceIndicator !== undefined &&
+//         page.params.space.startsWith("co_")) ||
+//       (page.params.space &&
+//         page.params.spaceIndicator === undefined &&
+//         !page.params.space.startsWith("co_"))
+//     ) {
+//       navigate({
+//         space: page.params.space,
+//         channel: page.params.channel,
+//         thread: page.params.thread,
+//       });
+//     }
+//   });
 
-        }
-        const space = await Space.load(page.params.space, { resolve: { channels: { $each: true }, image: true } })
-        globalState.loadedSpace = page.params.space!;
-        globalState.currentCatalog = page.params.space!;
-        console.log("setting space", space?.toJSON())
-        globalState.space = space;
-      }
-    });
-  });
+//   // Reload Roomy peer when login changes.
+//   $effect(() => {
+//     if (user.agent && user.catalogId.value) {
+//       console.log("user.agent", user.agent)
+//       if (!globalState.catalog) {
+//         Catalog.load(user.catalogId.value, { resolve: { spaces: { $each: true } } }).then((catalog) => {
+//           console.log("catalog", catalog?.toJSON())
+//           globalState.catalog = catalog
+//         })
+//       }
+//       // Initialize new roomy instance
+//       // initRoomy(user.agent).then((roomy) => (globalState.roomy = roomy));
+//     }
+//   });
 
-  $effect(() => {
-    // if (!globalState.roomy) return;
+//   /** Update the global space and channel when the route changes. */
+//   $effect(() => {
+//     page.url.pathname;
+//     page.params.space;
+//     // if (!globalState.roomy) return;
+//     untrack(async () => {
+//       await waitForValue(() => user.agent)
+//       if (page.url.pathname === "/home") {
+//         globalState.currentCatalog = "home";
+//         return
+//       }
+//       if (page.params.space) {
+//         if (page.params.space.includes(".")) {
+//           return resolveLeafId(page.params.space).then(async (id) => {
+//             if (!id) {
+//               console.error("Leaf ID not found for domain:", page.params.space);
+//               navigate("home");
+//               return;
+//             }
+//             const space = await Space.load(id, { resolve: { channels: { $each: true } } })
+//             globalState.loadedSpace = page.params.space!;
+//             globalState.currentCatalog = id;
+//             console.log("setting space", space?.toJSON())
+//             globalState.space = space;
+//           })
+//             .catch((e) => {
+//               console.error(e);
+//             });
 
-    if (globalState.space && page.params.channel) {
-      Channel.load(page.params.channel, { resolve: { messages: { $each: { profile: true } } } }).then((channel) => {
-        console.log("loading channel with messages")
-        globalState.channel = channel;
-      })
+//         }
+//         const space = await Space.load(page.params.space, { resolve: { channels: { $each: true }, image: true } })
+//         globalState.loadedSpace = page.params.space!;
+//         globalState.currentCatalog = page.params.space!;
+//         globalState.space = space;
+//       }
+//     });
+//   });
+
+//   $effect(() => {
+//     // if (!globalState.roomy) return;
+
+//     if (globalState.space && page.params.channel) {
+//       Channel.load(page.params.channel).then((channel) => {
+//         console.log("loading channel with messages")
+//         globalState.channel = channel;
+//       })
 
 
-    } else if (globalState.space && page.params.thread) {
-      Thread.load(page.params.thread).then((thread) => (globalState.channel = thread))
-        .catch((e) => {
-          console.error("Error opening thread:", e);
-          navigate("home");
-        });
-    }
-  });
+//     } else if (globalState.space && page.params.thread) {
+//       Thread.load(page.params.thread).then((thread) => (globalState.channel = thread))
+//         .catch((e) => {
+//           console.error("Error opening thread:", e);
+//           navigate("home");
+//         });
+//     }
+//   });
 
-  // $effect(() => {
-  //   if (globalState.space && user.agent) {
-  //     globalState.isAdmin = globalState.space.admins((x) =>
-  //       x.toArray().includes(user.agent!.assertDid),
-  //     );
-  //     globalState.isBanned = !!globalState.space.bans((x) =>
-  //       x.get(user.agent!.assertDid),
-  //     );
-  //   } else {
-  //     globalState.isAdmin = false;
-  //     globalState.isBanned = false;
-  //   }
-  // });
-});
+//   // $effect(() => {
+//   //   if (globalState.space && user.agent) {
+//   //     globalState.isAdmin = globalState.space.admins((x) =>
+//   //       x.toArray().includes(user.agent!.assertDid),
+//   //     );
+//   //     globalState.isBanned = !!globalState.space.bans((x) =>
+//   //       x.get(user.agent!.assertDid),
+//   //     );
+//   //   } else {
+//   //     globalState.isAdmin = false;
+//   //     globalState.isBanned = false;
+//   //   }
+//   // });
+// });
 
 
 

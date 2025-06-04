@@ -4,7 +4,7 @@
   import { globalState} from "$lib/global.svelte";
   import Dialog from "./Dialog.svelte";
   import { focusOnRender } from "$lib/actions/useFocusOnRender.svelte";
-  import { WikiPage } from "$lib/schema";
+  import { Page } from "$lib/schema";
   import { co } from "jazz-tools";
 
   let {

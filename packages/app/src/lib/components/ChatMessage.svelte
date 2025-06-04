@@ -12,7 +12,7 @@
   import AvatarImage from "./AvatarImage.svelte";
   import { getContentHtml, type Item } from "$lib/tiptap/editor";
   // import { Announcement, Message, type EntityIdStr } from "$lib/schema"
-  import { Message, Profile } from "$lib/schema";
+  import { Message } from "$lib/schema";
   // import type {CoValue} from "jazz-tools"
   import { globalState } from "$lib/global.svelte";
   // import { derivePromise } from "$lib/utils.svelte";
@@ -410,7 +410,7 @@
 {/snippet} -->
 
 {#snippet messageView(msg: Message)}
-  {@const authorProfile:Profile  = msg.profile!}
+  {@const authorProfile:Profile  = msg.internal?.profile}
 
   {@render toolbar(authorProfile)}
 
@@ -428,11 +428,11 @@
       </a>
     {:else}
       <div class="w-11">
-        {#if message.createdDate}
+        {#if message.internal?.createdDate}
           <span
             class="opacity-0 text-[8px] text-gray-300 transition-opacity duration-200 whitespace-nowrap group-hover:opacity-100"
           >
-            {format(message.createdDate, "pp")}
+            {format(message.internal.createdDate, "pp")}
           </span>
         {/if}
       </div>
@@ -451,7 +451,7 @@
                 {authorProfile.displayName || authorProfile.handle}
               </h5>
             </a>
-            {@render timestamp(message.createdDate || new Date())}
+            {@render timestamp(message.internal?.createdDate || new Date())}
           </section>
         {/if}
 
@@ -498,7 +498,7 @@
                 {authorProfile.displayName || authorProfile.handle}
               </h5>
             </a>
-            {@render timestamp(message.createdDate || new Date())}
+            {@render timestamp(message.internal?.createdDate || new Date())}
           </section>
         {/if}
 
@@ -507,7 +507,7 @@
           <span
             class="dz-prose select-text [&_a]:text-primary [&_a]:hover:underline"
           >
-            {@html getContentHtml(JSON.parse(msg.body))}
+            {@html getContentHtml(JSON.parse(msg.internal?.body || ""))}
           </span>
         <!-- {:else if links && type === "link"}
           {#each links as url}
@@ -537,7 +537,7 @@
               <div class="flex flex-col gap-1">
                 <p class="font-semibold">Message edited</p>
                 <p>
-                  Original: {format(msg.createdDate || new Date(), "PPpp")}
+                  Original: {format(msg.internal?.createdDate || new Date(), "PPpp")}
                 </p>
                 <p>Edited: {getEditedTime(msg)}</p>
               </div>

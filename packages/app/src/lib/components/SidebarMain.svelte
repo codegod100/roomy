@@ -2,7 +2,7 @@
   import Icon from "@iconify/svelte";
   import Dialog from "$lib/components/Dialog.svelte";
   import { Button, Tabs } from "bits-ui";
-  import { Category, Channel, Channels, Space, Thread } from "$lib/schema.ts";
+  import { Category, Channel, Space, Thread } from "$lib/schema.ts";
   import { globalState } from "$lib/global.svelte";
   import { Group, Account, CoList, co } from "jazz-tools";
   import { derivePromise, navigate, Toggle } from "$lib/utils.svelte";
@@ -30,18 +30,7 @@
     }
   }
 
-  // let allThreads = derivePromise([], async () =>
-  //   { let threads = await globalState.space?.threads.items()) || [])
-  //     .filter((x) => !x.softDeleted)
-  //     .map((x) => ({
-  //       target: {
-  //         space: page.params.space!,
-  //         thread: x.id,
-  //       },
-  //       name: x.name,
-  //       id: x.id,
-  //     })),
-  // );
+
 
   function allThreads() {
     let threads = globalState.space?.threads || [];
@@ -78,52 +67,10 @@
       }));
   });
 
-  // let categories = derivePromise([], async () => {
-  //   if (!globalState.space) return [];
-  //   return (await globalState.space.sidebarItems.items())
-  //     .map((x) => x.tryCast(Category) as Category)
-  //     .filter((x) => !!x);
-  // });
-  function getSidebarItems() {
-    const space = globalState.space;
-    if (!space) return [];
-    const threads = space.threads || [];
-    const channels = space.channels || [];
-    let categories = space.categories || [];
 
-    return [...channels, ...categories];
-  }
 
-  $effect(() => {
-    if (globalState.space) {
-      const me = Account.getMe();
-      untrack(() => {
-        if (globalState.space && me.canAdmin(globalState.space)) {
-          globalState.isAdmin = true;
-        }
-      });
-    }
-  });
-  let sidebarItems = $state(getSidebarItems());
-  // let initial = true;
-  // $inspect(globalState.space).with((kind, space) => {
-  //   console.log("space", space);
-  //   // const group = globalState.space?._owner.castAs(Group)
-  //   // console.log("owner", globalState.space?._owner.toJSON())
-  //   if (space && globalState.space) {
-  //     if(me.canAdmin(globalState.space)){
-  //       globalState.isAdmin = true;
-  //     }
-  //     let items = Space.sidebarItems(space);
-  //     console.log("sidebar items", items);
-  //     if(initial){
-  //       initial = false;
-  //       console.log("setting sidebar items")
-  //       sidebarItems = items;
-  //     }
 
-  //   }
-  // });
+
   let showNewCategoryDialog = $state(false);
   let newCategoryName = $state("");
   async function createCategory() {
@@ -327,7 +274,7 @@
         active={globalState.channel?.id ?? ""}
       />
     {:else}
-      <SidebarChannelList {sidebarItems} />
+      <SidebarChannelList />
     {/if}
   </div>
 </nav>

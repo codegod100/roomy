@@ -11,28 +11,31 @@
 
   import { globalState } from "$lib/global.svelte";
   import { user } from "$lib/user.svelte";
-  import { derivePromise, Toggle, setTheme } from "$lib/utils.svelte";
+  import { derivePromise, Toggle, setTheme, navigate } from "$lib/utils.svelte";
   import { type ThemeName } from "$lib/themes.ts";
   import ServerBar from "$lib/components/ServerBar.svelte";
   import SidebarMain from "$lib/components/SidebarMain.svelte";
   import { page } from "$app/state";
   import { afterNavigate } from "$app/navigation";
   import { AccountSchema, Catalog } from "$lib/schema";
-  import "jazz-inspector-element"
+  import "jazz-inspector-element";
   const peerUrl = "wss://cloud.jazz.tools/?key=nandithebull@outlook.com";
   // const peerUrl = "ws://127.0.0.1:4200"
   let sync = { peer: peerUrl };
   const { children } = $props();
   // const spaces = $derived(SpaceglobalState.catalog?.spaces)
   // $inspect(spaces).with((kind,spaces) => console.log(kind,"inspect spaces", spaces?.toJSON()))
-  let spaces = $derived(globalState.catalog?.spaces)
+  
+  if (page.params.space) {
+    navigate({
+      space: page.params.space,
+      channel: page.params.channel,
+      thread: page.params.thread,
+    });
+  }
 
 
-  // $effect(()=>{
 
-  // })
-
-  // console.log("catalog", globalState.catalog)
   let themeColor = $state<ThemeName>("synthwave"); // defualt theme color
   onMount(async () => {
     await user.init();
@@ -59,8 +62,8 @@
     }
   });
 
-  const isSpacesVisible = Toggle({ value: false, key: "isSpacesVisible" });
-  setContext("isSpacesVisible", isSpacesVisible);
+  // const isSpacesVisible = Toggle({ value: false, key: "isSpacesVisible" });
+  // setContext("isSpacesVisible", isSpacesVisible);
 
   const isSidebarVisible = Toggle({ value: false, key: "isSidebarVisible" });
   setContext("isSidebarVisible", isSidebarVisible);
@@ -103,8 +106,6 @@
       <!-- Content -->
       <div class="flex bg-base-100 h-full">
         <ServerBar
-          {spaces}
-          visible={isSpacesVisible.value || !page.params.space}
         />
         {#if page.params.space}
           <SidebarMain />
