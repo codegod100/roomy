@@ -31,11 +31,10 @@
   import type { Virtualizer } from "virtua/svelte";
   import { focusOnRender } from "$lib/actions/useFocusOnRender.svelte";
   import { threads } from "$lib/thread.svelte";
-  import { ChannelState, loadMessages } from "$lib/state/messages.svelte.ts";
-  console.log("timelineview");
-  loadMessages()
+  import { ChannelState, loadChannel } from "$lib/state/schema.svelte";
+  loadChannel()
   let selectedMessages = $derived(threads.selected);
-  let messages = $derived(ChannelState.messages);
+  let messages = $derived(ChannelState.channel.messages);
   let channel = $derived(ChannelState.channel);
 
   // Helper function to extract text content from TipTap JSON content

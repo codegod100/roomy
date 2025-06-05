@@ -12,8 +12,8 @@
   import { Channel, Message } from "$lib/schema";
   import { page } from "$app/state";
   import { globalState } from "$lib/global.svelte";
-  import { ChannelState } from "$lib/state/messages.svelte.ts";
-  let messages = $derived(ChannelState.messages)
+  import { ChannelState } from "$lib/state/schema.svelte";
+  let messages = $derived(ChannelState.channel.messages)
   let {
     virtualizer = $bindable(),
   }: {
@@ -30,7 +30,6 @@
   // });
 
   $inspect(messages).with(async (_, messages) => {
-    console.log(messages);
     for (const message of messages) {
       console.log(message.internal?.toJSON());
     }

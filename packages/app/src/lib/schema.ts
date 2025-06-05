@@ -217,7 +217,7 @@ type SpaceSchema = co.loaded<typeof SpaceSchema>
 export class Space {
     internal: SpaceSchema | undefined | null
     static async load(id: string) {
-        const internal = await SpaceSchema.load(id)
+        const internal = await SpaceSchema.load(id, {resolve: {channels: {$each: true}}})
         const space = new Space()
         space.internal = internal
         return space
@@ -233,8 +233,13 @@ export class Space {
             return channel
         })
     }
+    static create({name}: {name: string}){
+        const internal = SpaceSchema.create({name})
+        const space = new Space()
+        space.internal = internal
+        return space
+    }
 }
-export type Profile = Loaded<typeof Profile>
 export type Category = Loaded<typeof Category>
 export type Image = Loaded<typeof Image>
 
@@ -259,6 +264,18 @@ export class Catalog {
             s.internal = space
             return s
         })
+    }
+    static create(){
+        const internal = CatalogSchema.create({})
+        const catalog = new Catalog()
+        catalog.internal = internal
+        return catalog
+    }
+    addSpace(space: Space){
+        if(!this.internal.spaces){
+            this.internal.spaces = co.list(SpaceSchema).create([])
+        }
+        this.internal.spaces.push(space.internal)
     }
 }
 

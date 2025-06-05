@@ -17,7 +17,14 @@
   import { Group } from "jazz-tools";
   import JSZip from "jszip";
   import FileSaver from "file-saver";
+  import { CatalogState, loadCatalog } from "$lib/state/schema.svelte";
+  loadCatalog();
+  let catalog = $derived(CatalogState.catalog);
 
+  $inspect(catalog).with(async (_, catalog) => {
+    console.log(catalog.internal?.toJSON());
+    console.log(catalog.spaces);
+  });
   // let {
   //   spaces,
   //   visible,
@@ -33,28 +40,29 @@
   let newSpaceName = $state("");
   let isNewSpaceDialogOpen = $state(false);
 
-  // async function createSpace() {
-  //   // if (!newSpaceName || !user.agent || !globalState.roomy) return;
-  //   // const space = await globalState.roomy.create(Space);
-  //   const space = Space.create({ name: newSpaceName }, {owner: Group.create()});
-  //   // space.admins((x) => user.agent && x.push(user.agent.assertDid));
-  //   // space.commit();
-  //   if (globalState.catalog) {
-  //     if (!globalState.catalog?.spaces) {
-  //       console.log("creating new spaces list for catalog");
-  //       globalState.catalog.spaces = Spaces.create([space]);
-  //     } else {
-  //       console.log("pushing space to catalog");
-  //       globalState.catalog.spaces.push(space);
-  //     }
-  //   }
+  async function createSpace() {
+    // if (!newSpaceName || !user.agent || !globalState.roomy) return;
+    // const space = await globalState.roomy.create(Space);
+    const space = Space.create({ name: newSpaceName });
+    // space.admins((x) => user.agent && x.push(user.agent.assertDid));
+    // space.commit();
+    // if (globalState.catalog) {
+    //   if (!globalState.catalog?.spaces) {
+    //     console.log("creating new spaces list for catalog");
+    //     globalState.catalog.spaces = Spaces.create([space]);
+    //   } else {
+    //     console.log("pushing space to catalog");
+    //     globalState.catalog.spaces.push(space);
+    //   }
+    // }
 
-  //   // globalState.roomy.spaces.push(space);
-  //   // globalState.roomy.commit();
-  //   newSpaceName = "";
-
-  //   isNewSpaceDialogOpen = false;
-  // }
+    // globalState.roomy.spaces.push(space);
+    // globalState.roomy.commit();
+    newSpaceName = "";
+    catalog.addSpace(space) 
+    loadCatalog()
+    isNewSpaceDialogOpen = false;
+  }
 
   let loginError = $state("");
 
@@ -131,19 +139,6 @@
   //     FileSaver.saveAs(content, "roomy-data.zip");
   //   });
   // }
-
-  let catalog = $derived.by(() => {
-    if (user.agent && user.catalogId.value) {
-      return Catalog.load(user.catalogId.value);
-    }
-    return Promise.resolve(new Catalog());
-  });
-
-  $inspect(catalog).with(async (_, catalog) => {
-    const c = await catalog;
-    console.log(c.internal?.toJSON());
-    console.log(c.spaces)
-  });
 </script>
 
 <!-- Width manually set for transition to w-0 -->

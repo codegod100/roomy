@@ -98,8 +98,8 @@ let catalogId: {
         value = (resp.data.value as { id: string }).id;
       })
       .catch(async () => {
-        const catalog = Catalog.create({});
-        const newCatalogId = catalog.id;
+        const catalog = Catalog.create();
+        const newCatalogId = catalog.internal?.id;
         await agent?.com.atproto.repo.createRecord({
           collection: "chat.roomy.jazz.catalog",
           record: { id: newCatalogId },

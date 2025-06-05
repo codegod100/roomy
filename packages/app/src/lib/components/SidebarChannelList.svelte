@@ -10,16 +10,12 @@
   import { Accordion, Button } from "bits-ui";
   import { slide } from "svelte/transition";
   import Dialog from "./Dialog.svelte";
-
-  const channels = $derived.by(
-    async() => {
-      const spaceId = page.params.space
-      if(!spaceId) return []
-      const space = await Space.load(spaceId)
-      return space.channels
-    }
-  );
-
+  import {SpaceState, loadSpace} from "$lib/state/schema.svelte.ts"
+  loadSpace()
+  const channels = $derived(SpaceState.space.channels)
+$inspect(channels).with(()=>{
+  console.log(channels)
+})
   // const categories = $derived.by(
   //   () => {
   //     const categories = globalState.space?.categories?.filter(
@@ -167,32 +163,32 @@
   {/each} -->
   {#await channels then channels}
     {#each channels as channel}
-    <div class="group flex items-center gap-1">
-      <Button.Root
-        href={navigateSync({
-          space: page.params.space,
-          channel: channel.internal?.id,
-        })}
-        class="flex-1 cursor-pointer px-1 dz-btn dz-btn-ghost justify-start border {channel?.id ===
-        page.params.channel
-          ? 'border-primary text-primary'
-          : ' border-transparent'}"
-      >
-        <h3 class="flex justify-start items-center w-full gap-2">
-          <Icon icon="basil:comment-solid" class="shrink-0" />
-          <span class="truncate"> {channel.internal?.name} </span>
-        </h3>
-      </Button.Root>
-      {#if globalState.isAdmin}
+      <div class="group flex items-center gap-1">
         <Button.Root
-          title="Delete"
-          class="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer dz-btn dz-btn-ghost dz-btn-circle text-error hover:bg-error/10"
-          onclick={() => deleteItem(channel)}
+          href={navigateSync({
+            space: page.params.space,
+            channel: channel.internal?.id,
+          })}
+          class="flex-1 cursor-pointer px-1 dz-btn dz-btn-ghost justify-start border {channel?.id ===
+          page.params.channel
+            ? 'border-primary text-primary'
+            : ' border-transparent'}"
         >
-          <Icon icon="lucide:x" class="size-4" />
+          <h3 class="flex justify-start items-center w-full gap-2">
+            <Icon icon="basil:comment-solid" class="shrink-0" />
+            <span class="truncate"> {channel.internal?.name} </span>
+          </h3>
         </Button.Root>
-      {/if}
-    </div>
-  {/each}
-{/await}
+        {#if globalState.isAdmin}
+          <Button.Root
+            title="Delete"
+            class="opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer dz-btn dz-btn-ghost dz-btn-circle text-error hover:bg-error/10"
+            onclick={() => deleteItem(channel)}
+          >
+            <Icon icon="lucide:x" class="size-4" />
+          </Button.Root>
+        {/if}
+      </div>
+    {/each}
+  {/await}
 </div>
