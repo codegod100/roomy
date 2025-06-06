@@ -40,9 +40,10 @@
   import MessageRepliedTo from "./Message/MessageRepliedTo.svelte";
   import { extractLinks } from "$lib/utils/collectLinks";
   import { untrack } from "svelte";
-  import { addMessage, findMessages } from "$lib/search.svelte";
+  import { findMessages } from "$lib/search.svelte";
   import FullscreenImageDropper from "./helper/FullscreenImageDropper.svelte";
   import UploadFileButton from "./helper/UploadFileButton.svelte";
+  import { clearLoaded,setTimeline } from "$lib/messages.svelte";
 
   let space = $derived(
     new CoState(Space, page.params.space, {
@@ -96,9 +97,7 @@
     console.log("threadId", threadId);
   });
 
-  // $inspect(timeline).with(() => {
-  //   console.log("timeline", timeline);
-  // });
+ 
 
   const readonly = $derived(thread.current?.name === "@links");
   let isMobile = $derived((outerWidth.current ?? 0) < 640);
@@ -206,11 +205,22 @@
 
   $effect(() => {
     timeline;
+    if(!threadId) return;
     // const timeline = channel.current?.mainThread?.timeline;
     untrack(() => {
+      setTimeline(threadId, timeline)
       console.log("timeline", timeline);
     });
   });
+
+  $effect(()=>{
+    page.params.channel || page.params.thread
+    if(!threadId) return;
+    untrack(()=>{
+      // clear message load count on channel switch
+      // clearLoaded(threadId)
+    })
+  })
 
   async function addThread(e: SubmitEvent) {
     e.preventDefault();

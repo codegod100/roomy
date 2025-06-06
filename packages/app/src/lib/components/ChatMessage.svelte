@@ -29,6 +29,7 @@
   import toast from "svelte-french-toast";
   import { addMessage } from "$lib/search.svelte";
   import ImageUrlEmbed from "./Message/embeds/ImageUrlEmbed.svelte";
+  import { addLoaded, ChatState } from "$lib/messages.svelte";
 
   const me = new AccountCoState(RoomyAccount, {
     resolve: {
@@ -66,11 +67,27 @@
     }),
   );
 
+  let messagesLoaded = $derived.by(() => {
+    if (!threadId) return false;
+    if(!ChatState.timeline[threadId]?.loaded) return false
+    return (
+      ChatState.timeline[threadId].loaded.size >=
+      ChatState.timeline[threadId].messages.length
+    );
+  });
+  $inspect(ChatState).with((_, cs) => {
+    console.log("ChatState", cs);
+  });
+
   $effect(() => {
-    message.current;
+    if (!message.current?.id) return;
+    const id = message.current.id;
+
     untrack(() => {
+      if(!threadId) return;
+      addLoaded(threadId, id);
       addMessage(
-        threadId ?? "",
+        threadId,
         messageId,
         message.current?.content?.toString() ?? "",
       );
@@ -161,29 +178,32 @@
     if (!reactions) return [];
 
     // convert to [emoji, count, user (if current user has reacted with that emoji), users array]
-    const emojiMap = new Map<string, { 
-      count: number; 
-      user: boolean; 
-      users: { id: string; name: string }[] 
-    }>();
-    
+    const emojiMap = new Map<
+      string,
+      {
+        count: number;
+        user: boolean;
+        users: { id: string; name: string }[];
+      }
+    >();
+
     for (const reaction of reactions) {
       if (!reaction || !reaction.emoji) continue;
       let emoji = reaction.emoji;
       let obj = emojiMap.get(emoji);
-      const reactorName = reaction._edits.emoji?.by?.profile?.name || 'Unknown';
+      const reactorName = reaction._edits.emoji?.by?.profile?.name || "Unknown";
       const reactorId = reaction._edits.emoji?.by?.profile?.id;
-      
+
       if (obj) {
         obj.count++;
         if (reactorId) {
           obj.users.push({ id: reactorId, name: reactorName });
         }
       } else {
-        obj = { 
-          count: 1, 
-          user: false, 
-          users: reactorId ? [{ id: reactorId, name: reactorName }] : [] 
+        obj = {
+          count: 1,
+          user: false,
+          users: reactorId ? [{ id: reactorId, name: reactorName }] : [],
         };
         emojiMap.set(emoji, obj);
       }
@@ -192,13 +212,13 @@
         obj.user = true;
       }
     }
-    
+
     let array = Array.from(emojiMap.entries())
       .map(([emoji, obj]) => ({
         emoji,
         count: obj.count,
         user: obj.user,
-        users: obj.users
+        users: obj.users,
       }))
       .sort((a, b) => b.emoji.localeCompare(a.emoji));
     return array;
@@ -247,6 +267,7 @@
   let hiddenIn = $derived(new Set(message.current?.hiddenIn ?? []));
 
   let shouldShow = $derived.by(() => {
+    if (!messagesLoaded) return false;
     if (!message.current) return false;
     if (message.current.softDeleted) return false;
     if (!admin || !messageHasAdmin(message.current, admin)) return false;

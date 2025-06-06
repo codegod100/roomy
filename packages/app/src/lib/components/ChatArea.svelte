@@ -6,6 +6,7 @@
   import { setContext } from "svelte";
   import { Account, co } from "jazz-tools";
   import type { Space } from "$lib/jazz/schema";
+  import { setTimeline } from "$lib/messages.svelte";
 
   let {
     timeline,
@@ -22,7 +23,6 @@
     space: co.loaded<typeof Space> | undefined | null;
     threadId?: string;
   } = $props();
-
   let viewport: HTMLDivElement = $state(null!);
 
   setContext("scrollToMessage", (id: string) => {

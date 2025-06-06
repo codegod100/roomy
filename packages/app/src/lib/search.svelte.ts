@@ -13,7 +13,7 @@ export function addMessage(timelineId: string, messageId: string, messageBody: s
             preset: "performance",
           });
     }
-    console.log("adding to index", timelineId)
+    console.log("adding to index", timelineId, messageId)
     let timeline = Search.timeline[timelineId]
     timeline.add(messageId, messageBody);
     // console.log(Search.timeline)
