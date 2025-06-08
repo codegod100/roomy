@@ -142,4 +142,8 @@ export const RoomyAccount = co
         publicGroup("reader"),
       );
     }
+
+    if (account.profile.roomyInbox === undefined){
+      account.profile.roomyInbox = createInbox();
+    }
   });
