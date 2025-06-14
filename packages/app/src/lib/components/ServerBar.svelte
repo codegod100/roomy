@@ -32,13 +32,6 @@
   );
 </script>
 
-<!-- Width manually set for transition to w-0 -->
-<!-- <aside
-  class="flex flex-col justify-between align-center h-screen {visible
-    ? 'w-[60px] px-1 border-r-2'
-    : 'w-[0]'} py-2 border-base-200 bg-base-300 transition-[width] duration-100 ease-out"
-  class:opacity-0={!visible}
-> -->
 <Sidebar>
   <TooltipProvider>
     <div class="flex flex-col gap-1 items-center justify-center py-2">
@@ -98,4 +91,3 @@
     </section>
   </TooltipProvider>
 </Sidebar>
-<!-- </aside> -->
