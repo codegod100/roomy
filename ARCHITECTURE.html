@@ -1,0 +1,431 @@
+<meta charset="UTF-8" />
+<h1 id="roomy-architecture-documentation">Roomy Architecture Documentation</h1>
+<h2 id="overview">Overview</h2>
+<p>
+  Roomy is a “gardenable group chat” platform that enables fluid content
+  transitions from chat messages to wiki-style pages. Built with modern web
+  technologies, it combines AT Protocol (Bluesky), Jazz CRDT (Conflict-free
+  Replicated Data Types), and Svelte 5 to create a local-first, peer-to-peer
+  communication platform.
+</p>
+<h2 id="core-philosophy">Core Philosophy</h2>
+<ul>
+  <li>
+    <strong>Local-First</strong>: All data is stored locally first, then
+    synchronized peer-to-peer
+  </li>
+  <li>
+    <strong>Content Fluidity</strong>: Messages can grow into threads, pages,
+    and wiki content
+  </li>
+  <li>
+    <strong>User Agency</strong>: Users own their data and can migrate between
+    instances
+  </li>
+  <li>
+    <strong>Gardenable</strong>: Content evolves from ephemeral chat to
+    permanent knowledge
+  </li>
+</ul>
+<h2 id="technology-stack">Technology Stack</h2>
+<h3 id="frontend-framework">Frontend Framework</h3>
+<ul>
+  <li><strong>Svelte 5</strong> with SvelteKit for reactive UI and routing</li>
+  <li>
+    <strong>Vite</strong> as build tool with WASM, top-level await, and
+    arraybuffer support
+  </li>
+  <li>
+    <strong>Static Site Generation</strong> using
+    <code>@sveltejs/adapter-static</code>
+  </li>
+</ul>
+<h3 id="styling-ui">Styling &amp; UI</h3>
+<ul>
+  <li><strong>Tailwind CSS v4</strong> for utility-first styling</li>
+  <li><strong>DaisyUI</strong> for component styling themes</li>
+  <li><strong>FuxUI Base</strong> modern component library</li>
+  <li><strong>Bits UI</strong> for accessible components</li>
+  <li><strong>Vaul Svelte</strong> for drawer/modal components</li>
+</ul>
+<h3 id="data-layer">Data Layer</h3>
+<ul>
+  <li>
+    <strong>Jazz Tools</strong> - Primary CRDT framework for real-time
+    collaboration
+  </li>
+  <li>
+    <strong>AT Protocol</strong> - Integration with Bluesky/ATProto ecosystem
+  </li>
+  <li><strong>IndexedDB</strong> for local storage</li>
+  <li><strong>FlexSearch</strong> for content indexing</li>
+</ul>
+<h3 id="cross-platform">Cross-Platform</h3>
+<ul>
+  <li>
+    <strong>Tauri</strong> for desktop applications (Windows, macOS, Linux)
+  </li>
+  <li><strong>Web</strong> deployment via Netlify</li>
+  <li><strong>Android</strong> support through Tauri generation</li>
+</ul>
+<h2 id="project-structure">Project Structure</h2>
+<pre><code>roomy/
+├── packages/
+│   ├── app/                    # Main SvelteKit application
+│   │   ├── src/
+│   │   │   ├── routes/         # SvelteKit routing
+│   │   │   ├── lib/            # Shared libraries and components
+│   │   │   └── app.html        # HTML template
+│   │   ├── static/             # Static assets
+│   │   ├── src-tauri/          # Tauri desktop app config
+│   │   └── package.json
+│   ├── sdk/                    # Reusable SDK components
+│   ├── sdk-docs/              # API documentation
+│   └── tsconfig/              # Shared TypeScript configurations
+├── sdk/                       # Root-level SDK
+└── scripts/                   # Build and deployment scripts</code></pre>
+<h2 id="application-architecture">Application Architecture</h2>
+<h3 id="routing-structure">Routing Structure</h3>
+<pre><code>src/routes/
+├── (app)/                     # Main application layout
+│   ├── +layout.svelte         # Root layout with Jazz/ATProto setup
+│   ├── +page.svelte           # Landing page
+│   ├── [[spaceIndicator=dash]]/  # Dynamic space routing
+│   │   ├── [space=covalue]/   # Space-specific routes
+│   │   │   ├── +layout.svelte # Space layout with navigation
+│   │   │   ├── +page.svelte   # Space home
+│   │   │   ├── [channel]/     # Channel pages
+│   │   │   │   └── +page.svelte
+│   │   │   ├── thread/[thread]/ # Thread conversations
+│   │   │   │   └── +page.svelte
+│   │   │   └── page/[page]/   # Wiki-style pages
+│   │   │       └── +page.svelte
+│   │   ├── [id=domain]/       # Domain-based user routing
+│   │   ├── [id=leaf]/         # Leaf protocol routing
+│   │   └── messages/          # Direct messages
+│   ├── home/                  # User home page
+│   ├── user/                  # User profiles
+│   ├── admin/                 # Administrative interface
+│   └── import-space/          # Space import utility
+└── (internal)/                # Internal routes
+    └── oauth/                 # OAuth callback handling</code></pre>
+<h3 id="component-hierarchy">Component Hierarchy</h3>
+<pre><code>lib/components/
+├── ui/                        # Base UI components
+│   ├── Sidebar.svelte         # ServerBar container
+│   ├── Navbar.svelte          # Top navigation
+│   └── SpaceSidebar.svelte    # Space-specific sidebar
+├── Message/                   # Message-related components
+│   ├── MessageReactions.svelte
+│   ├── MessageRepliedTo.svelte
+│   ├── MessageThreadBadge.svelte
+│   ├── MessageToolbar.svelte
+│   └── embeds/                # Rich embeds
+│       └── ImageUrlEmbed.svelte
+├── dm/                        # Direct messaging
+│   ├── DMContainer.svelte
+│   ├── DMList.svelte
+│   └── MessageList.svelte
+├── helper/                    # Utility components
+│   ├── EmojiPicker.svelte
+│   ├── FullscreenImageDropper.svelte
+│   └── UploadFileButton.svelte
+├── search/                    # Search functionality
+│   ├── SearchBar.svelte
+│   ├── SearchResults.svelte
+│   └── search.svelte.ts
+├── Core Components            # Main feature components
+│   ├── ServerBar.svelte       # Server/space navigation
+│   ├── SidebarMain.svelte     # Channel list and navigation
+│   ├── SidebarChannelList.svelte
+│   ├── SidebarChannelButton.svelte
+│   ├── TimelineView.svelte    # Chat and board view
+│   ├── ChatArea.svelte        # Message timeline
+│   ├── ChatInput.svelte       # Message composition
+│   ├── ChatMessage.svelte     # Individual message display
+│   ├── BoardList.svelte       # Page/thread lists
+│   ├── PageEditor.svelte      # Wiki page editing
+│   ├── Login.svelte           # Authentication
+│   └── UserProfile.svelte     # User profile display</code></pre>
+<h2 id="data-layer-jazz-crdt-schema">Data Layer (Jazz CRDT Schema)</h2>
+<h3 id="core-data-structures">Core Data Structures</h3>
+<div class="sourceCode" id="cb4">
+  <pre
+    class="sourceCode typescript"
+  ><code class="sourceCode typescript"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Spaces - Top-level containers</span></span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> Space <span class="op">=</span> co<span class="op">.</span><span class="fu">map</span>({</span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>  imageUrl<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-5"><a href="#cb4-5" aria-hidden="true" tabindex="-1"></a>  description<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-6"><a href="#cb4-6" aria-hidden="true" tabindex="-1"></a>  channels<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(Channel)<span class="op">,</span></span>
+<span id="cb4-7"><a href="#cb4-7" aria-hidden="true" tabindex="-1"></a>  categories<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(Category)<span class="op">,</span></span>
+<span id="cb4-8"><a href="#cb4-8" aria-hidden="true" tabindex="-1"></a>  members<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(co<span class="op">.</span><span class="fu">account</span>())<span class="op">,</span></span>
+<span id="cb4-9"><a href="#cb4-9" aria-hidden="true" tabindex="-1"></a>  threads<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(Thread)<span class="op">,</span></span>
+<span id="cb4-10"><a href="#cb4-10" aria-hidden="true" tabindex="-1"></a>  pages<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(Page)<span class="op">,</span></span>
+<span id="cb4-11"><a href="#cb4-11" aria-hidden="true" tabindex="-1"></a>  creatorId<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-12"><a href="#cb4-12" aria-hidden="true" tabindex="-1"></a>  adminGroupId<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-13"><a href="#cb4-13" aria-hidden="true" tabindex="-1"></a>  bans<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(z<span class="op">.</span><span class="fu">string</span>())<span class="op">,</span></span>
+<span id="cb4-14"><a href="#cb4-14" aria-hidden="true" tabindex="-1"></a>  version<span class="op">:</span> z<span class="op">.</span><span class="fu">number</span>()<span class="op">.</span><span class="fu">optional</span>()</span>
+<span id="cb4-15"><a href="#cb4-15" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb4-16"><a href="#cb4-16" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-17"><a href="#cb4-17" aria-hidden="true" tabindex="-1"></a><span class="co">// Channels - Organized conversations</span></span>
+<span id="cb4-18"><a href="#cb4-18" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> Channel <span class="op">=</span> co<span class="op">.</span><span class="fu">map</span>({</span>
+<span id="cb4-19"><a href="#cb4-19" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-20"><a href="#cb4-20" aria-hidden="true" tabindex="-1"></a>  mainThread<span class="op">:</span> Thread<span class="op">,</span></span>
+<span id="cb4-21"><a href="#cb4-21" aria-hidden="true" tabindex="-1"></a>  subThreads<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(Thread)<span class="op">,</span></span>
+<span id="cb4-22"><a href="#cb4-22" aria-hidden="true" tabindex="-1"></a>  pages<span class="op">:</span> z<span class="op">.</span><span class="fu">optional</span>(co<span class="op">.</span><span class="fu">list</span>(Page))<span class="op">,</span></span>
+<span id="cb4-23"><a href="#cb4-23" aria-hidden="true" tabindex="-1"></a>  softDeleted<span class="op">:</span> z<span class="op">.</span><span class="fu">boolean</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-24"><a href="#cb4-24" aria-hidden="true" tabindex="-1"></a>  <span class="co">// ATProto feed integration</span></span>
+<span id="cb4-25"><a href="#cb4-25" aria-hidden="true" tabindex="-1"></a>  showAtprotoFeeds<span class="op">:</span> z<span class="op">.</span><span class="fu">boolean</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-26"><a href="#cb4-26" aria-hidden="true" tabindex="-1"></a>  atprotoFeedsConfig<span class="op">:</span> z<span class="op">.</span><span class="fu">optional</span>(z<span class="op">.</span><span class="fu">object</span>({</span>
+<span id="cb4-27"><a href="#cb4-27" aria-hidden="true" tabindex="-1"></a>    feeds<span class="op">:</span> z<span class="op">.</span><span class="fu">array</span>(z<span class="op">.</span><span class="fu">string</span>())<span class="op">,</span></span>
+<span id="cb4-28"><a href="#cb4-28" aria-hidden="true" tabindex="-1"></a>    threadsOnly<span class="op">:</span> z<span class="op">.</span><span class="fu">boolean</span>()<span class="op">,</span></span>
+<span id="cb4-29"><a href="#cb4-29" aria-hidden="true" tabindex="-1"></a>  }))</span>
+<span id="cb4-30"><a href="#cb4-30" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb4-31"><a href="#cb4-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-32"><a href="#cb4-32" aria-hidden="true" tabindex="-1"></a><span class="co">// Messages - Core communication unit</span></span>
+<span id="cb4-33"><a href="#cb4-33" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> Message <span class="op">=</span> co<span class="op">.</span><span class="fu">map</span>({</span>
+<span id="cb4-34"><a href="#cb4-34" aria-hidden="true" tabindex="-1"></a>  content<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-35"><a href="#cb4-35" aria-hidden="true" tabindex="-1"></a>  createdAt<span class="op">:</span> z<span class="op">.</span><span class="fu">date</span>()<span class="op">,</span></span>
+<span id="cb4-36"><a href="#cb4-36" aria-hidden="true" tabindex="-1"></a>  updatedAt<span class="op">:</span> z<span class="op">.</span><span class="fu">date</span>()<span class="op">,</span></span>
+<span id="cb4-37"><a href="#cb4-37" aria-hidden="true" tabindex="-1"></a>  author<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span>        <span class="co">// ATProto format support</span></span>
+<span id="cb4-38"><a href="#cb4-38" aria-hidden="true" tabindex="-1"></a>  replyTo<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-39"><a href="#cb4-39" aria-hidden="true" tabindex="-1"></a>  reactions<span class="op">:</span> ReactionList<span class="op">,</span></span>
+<span id="cb4-40"><a href="#cb4-40" aria-hidden="true" tabindex="-1"></a>  embeds<span class="op">:</span> z<span class="op">.</span><span class="fu">optional</span>(co<span class="op">.</span><span class="fu">list</span>(Embed))<span class="op">,</span></span>
+<span id="cb4-41"><a href="#cb4-41" aria-hidden="true" tabindex="-1"></a>  threadId<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-42"><a href="#cb4-42" aria-hidden="true" tabindex="-1"></a>  hiddenIn<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(z<span class="op">.</span><span class="fu">string</span>())<span class="op">,</span></span>
+<span id="cb4-43"><a href="#cb4-43" aria-hidden="true" tabindex="-1"></a>  softDeleted<span class="op">:</span> z<span class="op">.</span><span class="fu">boolean</span>()<span class="op">.</span><span class="fu">optional</span>()</span>
+<span id="cb4-44"><a href="#cb4-44" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb4-45"><a href="#cb4-45" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-46"><a href="#cb4-46" aria-hidden="true" tabindex="-1"></a><span class="co">// User accounts and profiles</span></span>
+<span id="cb4-47"><a href="#cb4-47" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> RoomyAccount <span class="op">=</span> co<span class="op">.</span><span class="fu">account</span>({</span>
+<span id="cb4-48"><a href="#cb4-48" aria-hidden="true" tabindex="-1"></a>  profile<span class="op">:</span> RoomyProfile<span class="op">,</span></span>
+<span id="cb4-49"><a href="#cb4-49" aria-hidden="true" tabindex="-1"></a>  root<span class="op">:</span> RoomyRoot</span>
+<span id="cb4-50"><a href="#cb4-50" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span>
+<span id="cb4-51"><a href="#cb4-51" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb4-52"><a href="#cb4-52" aria-hidden="true" tabindex="-1"></a><span class="im">export</span> <span class="kw">const</span> RoomyProfile <span class="op">=</span> co<span class="op">.</span><span class="fu">profile</span>({</span>
+<span id="cb4-53"><a href="#cb4-53" aria-hidden="true" tabindex="-1"></a>  name<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">,</span></span>
+<span id="cb4-54"><a href="#cb4-54" aria-hidden="true" tabindex="-1"></a>  imageUrl<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-55"><a href="#cb4-55" aria-hidden="true" tabindex="-1"></a>  blueskyHandle<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-56"><a href="#cb4-56" aria-hidden="true" tabindex="-1"></a>  joinedSpaces<span class="op">:</span> SpaceList<span class="op">,</span></span>
+<span id="cb4-57"><a href="#cb4-57" aria-hidden="true" tabindex="-1"></a>  roomyInbox<span class="op">:</span> co<span class="op">.</span><span class="fu">list</span>(InboxItem)<span class="op">,</span></span>
+<span id="cb4-58"><a href="#cb4-58" aria-hidden="true" tabindex="-1"></a>  bannerUrl<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-59"><a href="#cb4-59" aria-hidden="true" tabindex="-1"></a>  description<span class="op">:</span> z<span class="op">.</span><span class="fu">string</span>()<span class="op">.</span><span class="fu">optional</span>()<span class="op">,</span></span>
+<span id="cb4-60"><a href="#cb4-60" aria-hidden="true" tabindex="-1"></a>  threadSubscriptions<span class="op">:</span> z<span class="op">.</span><span class="fu">optional</span>(co<span class="op">.</span><span class="fu">list</span>(z<span class="op">.</span><span class="fu">string</span>()))</span>
+<span id="cb4-61"><a href="#cb4-61" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre>
+</div>
+<h3 id="data-flow">Data Flow</h3>
+<ol type="1">
+  <li>
+    <strong>User Authentication</strong>: AT Protocol OAuth → Jazz account
+    creation
+  </li>
+  <li>
+    <strong>Space Discovery</strong>: Public spaces list → Join/create spaces
+  </li>
+  <li>
+    <strong>Real-time Sync</strong>: Jazz CRDT → Automatic conflict resolution
+  </li>
+  <li>
+    <strong>Content Creation</strong>: Messages → Threads → Pages (fluid
+    transitions)
+  </li>
+  <li>
+    <strong>Cross-Platform</strong>: Local storage → P2P sync → Multi-device
+    access
+  </li>
+</ol>
+<h2 id="key-features">Key Features</h2>
+<h3 id="content-fluidity-system">Content Fluidity System</h3>
+<ul>
+  <li><strong>Messages</strong>: Basic chat communication</li>
+  <li><strong>Threads</strong>: Grouped message conversations</li>
+  <li><strong>Pages</strong>: Wiki-style editable content</li>
+  <li>
+    <strong>Transitions</strong>: Seamless evolution from chat to knowledge base
+  </li>
+</ul>
+<h3 id="at-protocol-integration">AT Protocol Integration</h3>
+<ul>
+  <li><strong>OAuth Authentication</strong>: Secure login via Bluesky</li>
+  <li><strong>Profile Synchronization</strong>: Handle, avatar, bio sync</li>
+  <li>
+    <strong>Feed Aggregation</strong>: Import external feeds into channels
+  </li>
+  <li>
+    <strong>Cross-Platform Identity</strong>: Portable identity across instances
+  </li>
+</ul>
+<h3 id="real-time-collaboration">Real-time Collaboration</h3>
+<ul>
+  <li><strong>Jazz CRDT</strong>: Conflict-free real-time editing</li>
+  <li>
+    <strong>Offline-First</strong>: Local storage with eventual consistency
+  </li>
+  <li><strong>P2P Sync</strong>: Direct device-to-device synchronization</li>
+  <li><strong>Permission System</strong>: Granular access control</li>
+</ul>
+<h3 id="direct-messaging">Direct Messaging</h3>
+<ul>
+  <li><strong>ATProto DMs</strong>: Native Bluesky messaging integration</li>
+  <li><strong>Conversation Management</strong>: Thread-based organization</li>
+  <li><strong>Rich Content</strong>: Embeds, reactions, file sharing</li>
+</ul>
+<h2 id="state-management">State Management</h2>
+<h3 id="svelte-5-runes-pattern">Svelte 5 Runes Pattern</h3>
+<div class="sourceCode" id="cb5">
+  <pre
+    class="sourceCode typescript"
+  ><code class="sourceCode typescript"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Component state</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> messageInput <span class="op">=</span> <span class="fu">$state</span>(<span class="st">&quot;&quot;</span>)<span class="op">;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> isLoading <span class="op">=</span> <span class="fu">$state</span>(<span class="kw">false</span>)<span class="op">;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a><span class="co">// Derived values</span></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="kw">let</span> filteredMessages <span class="op">=</span> <span class="fu">$derived</span>(</span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a>  messages<span class="op">.</span><span class="fu">filter</span>(msg <span class="kw">=&gt;</span> msg<span class="op">.</span><span class="at">content</span><span class="op">.</span><span class="fu">includes</span>(searchTerm))</span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a>)<span class="op">;</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co">// Side effects</span></span>
+<span id="cb5-11"><a href="#cb5-11" aria-hidden="true" tabindex="-1"></a><span class="fu">$effect</span>(() <span class="kw">=&gt;</span> {</span>
+<span id="cb5-12"><a href="#cb5-12" aria-hidden="true" tabindex="-1"></a>  <span class="cf">if</span> (user<span class="op">.</span><span class="at">current</span>) {</span>
+<span id="cb5-13"><a href="#cb5-13" aria-hidden="true" tabindex="-1"></a>    <span class="fu">syncUserProfile</span>()<span class="op">;</span></span>
+<span id="cb5-14"><a href="#cb5-14" aria-hidden="true" tabindex="-1"></a>  }</span>
+<span id="cb5-15"><a href="#cb5-15" aria-hidden="true" tabindex="-1"></a>})<span class="op">;</span></span></code></pre>
+</div>
+<h3 id="global-stores">Global Stores</h3>
+<div class="sourceCode" id="cb6">
+  <pre
+    class="sourceCode typescript"
+  ><code class="sourceCode typescript"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">// Key application stores</span></span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>user<span class="op">.</span><span class="at">svelte</span><span class="op">.</span><span class="at">ts</span>      <span class="co">// ATProto authentication and profile</span></span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>atproto<span class="op">.</span><span class="at">svelte</span><span class="op">.</span><span class="at">ts</span>   <span class="co">// OAuth client management</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>utils<span class="op">.</span><span class="at">svelte</span><span class="op">.</span><span class="at">ts</span>     <span class="co">// Navigation and utility functions</span></span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>dm<span class="op">.</span><span class="at">svelte</span><span class="op">.</span><span class="at">ts</span>        <span class="co">// Direct messaging client</span></span></code></pre>
+</div>
+<h3 id="context-management">Context Management</h3>
+<ul>
+  <li><strong>Jazz Account Context</strong>: CRDT account and permissions</li>
+  <li><strong>Space Context</strong>: Current space and navigation state</li>
+  <li><strong>Theme Context</strong>: UI theme and preferences</li>
+</ul>
+<h2 id="security-privacy">Security &amp; Privacy</h2>
+<h3 id="data-ownership">Data Ownership</h3>
+<ul>
+  <li><strong>Local-First Storage</strong>: All data stored locally first</li>
+  <li><strong>User-Controlled Sync</strong>: Users control data sharing</li>
+  <li>
+    <strong>Portable Identity</strong>: AT Protocol handles for portability
+  </li>
+  <li><strong>Export Capabilities</strong>: Full data export functionality</li>
+</ul>
+<h3 id="permission-system">Permission System</h3>
+<ul>
+  <li><strong>Jazz Groups</strong>: Fine-grained access control</li>
+  <li><strong>Space Administration</strong>: Creator and admin permissions</li>
+  <li><strong>Content Visibility</strong>: Public/private content controls</li>
+  <li>
+    <strong>Moderation Tools</strong>: Ban management and content filtering
+  </li>
+</ul>
+<h2 id="performance-scalability">Performance &amp; Scalability</h2>
+<h3 id="optimization-strategies">Optimization Strategies</h3>
+<ul>
+  <li><strong>Virtual Scrolling</strong>: Large message lists</li>
+  <li><strong>Lazy Loading</strong>: Component and route code splitting</li>
+  <li><strong>Efficient Updates</strong>: Svelte fine-grained reactivity</li>
+  <li><strong>Local Caching</strong>: IndexedDB for offline access</li>
+</ul>
+<h3 id="crdt-benefits">CRDT Benefits</h3>
+<ul>
+  <li><strong>No Server Dependencies</strong>: P2P architecture</li>
+  <li>
+    <strong>Automatic Conflict Resolution</strong>: Jazz handles merge conflicts
+  </li>
+  <li><strong>Offline Resilience</strong>: Local-first guarantees</li>
+  <li><strong>Horizontal Scaling</strong>: No central bottleneck</li>
+</ul>
+<h2 id="development-workflow">Development Workflow</h2>
+<h3 id="local-development">Local Development</h3>
+<div class="sourceCode" id="cb7">
+  <pre
+    class="sourceCode bash"
+  ><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Install dependencies</span></span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> install</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a><span class="co"># Start development server</span></span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> dev</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Run type checking</span></span>
+<span id="cb7-8"><a href="#cb7-8" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> check</span>
+<span id="cb7-9"><a href="#cb7-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb7-10"><a href="#cb7-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Build for production</span></span>
+<span id="cb7-11"><a href="#cb7-11" aria-hidden="true" tabindex="-1"></a><span class="ex">pnpm</span> build</span></code></pre>
+</div>
+<h3 id="testing-strategy">Testing Strategy</h3>
+<ul>
+  <li>
+    <strong>Component Testing</strong>: Vitest with Svelte Testing Library
+  </li>
+  <li><strong>E2E Testing</strong>: Playwright for user flows</li>
+  <li><strong>Type Safety</strong>: TypeScript with strict mode</li>
+  <li><strong>Manual Testing</strong>: Cross-platform compatibility</li>
+</ul>
+<h3 id="deployment">Deployment</h3>
+<ul>
+  <li><strong>Web</strong>: Netlify static deployment</li>
+  <li><strong>Desktop</strong>: Tauri builds for all platforms</li>
+  <li><strong>Mobile</strong>: Progressive Web App capabilities</li>
+</ul>
+<h2 id="extension-points">Extension Points</h2>
+<h3 id="plugin-architecture">Plugin Architecture</h3>
+<ul>
+  <li><strong>Custom Components</strong>: Drop-in UI components</li>
+  <li><strong>Data Schema Extensions</strong>: Additional Jazz schemas</li>
+  <li><strong>Service Integrations</strong>: External API connections</li>
+  <li><strong>Custom Themes</strong>: Tailwind configuration</li>
+</ul>
+<h3 id="api-integration">API Integration</h3>
+<ul>
+  <li><strong>ATProto Services</strong>: Additional Bluesky features</li>
+  <li><strong>External Feeds</strong>: RSS, ActivityPub, etc.</li>
+  <li><strong>File Storage</strong>: Custom blob storage providers</li>
+  <li><strong>Analytics</strong>: Usage tracking integration</li>
+</ul>
+<h2 id="future-roadmap">Future Roadmap</h2>
+<h3 id="technical-improvements">Technical Improvements</h3>
+<ul>
+  <li><strong>Mobile Apps</strong>: Native iOS/Android applications</li>
+  <li><strong>Federation</strong>: Cross-instance communication</li>
+  <li><strong>Enhanced Search</strong>: Full-text indexing improvements</li>
+  <li><strong>Performance</strong>: Bundle size optimization</li>
+</ul>
+<h3 id="feature-additions">Feature Additions</h3>
+<ul>
+  <li><strong>Voice/Video</strong>: Real-time communication</li>
+  <li><strong>File Sharing</strong>: Advanced attachment system</li>
+  <li><strong>Integrations</strong>: Third-party service connections</li>
+  <li><strong>AI Features</strong>: Content assistance and moderation</li>
+</ul>
+<h2 id="contributing">Contributing</h2>
+<h3 id="architecture-decisions">Architecture Decisions</h3>
+<ul>
+  <li>
+    <strong>ADRs</strong>: Architectural Decision Records in <code>/docs</code>
+  </li>
+  <li><strong>RFC Process</strong>: Major changes require discussion</li>
+  <li>
+    <strong>Code Review</strong>: All changes reviewed for architecture impact
+  </li>
+  <li>
+    <strong>Documentation</strong>: Architecture docs updated with changes
+  </li>
+</ul>
+<h3 id="guidelines">Guidelines</h3>
+<ul>
+  <li><strong>Component Design</strong>: Reusable, accessible, performant</li>
+  <li>
+    <strong>Data Modeling</strong>: Jazz-first, with AT Protocol integration
+  </li>
+  <li><strong>State Management</strong>: Svelte 5 patterns preferred</li>
+  <li><strong>Testing</strong>: Test user flows, not implementation details</li>
+</ul>
