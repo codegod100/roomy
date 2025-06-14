@@ -75,6 +75,11 @@ export function createFeedsChannel(name: string, feedUris?: string[], threadsOnl
   return channel;
 }
 
+export function createLinksChannel(name: string) {
+  const channel = createChannel(name, "links");
+  return channel;
+}
+
 export function enableAtprotoFeeds(channel: co.loaded<typeof Channel>, feedUris: string[], threadsOnly = false) {
   channel.showAtprotoFeeds = true;
   channel.atprotoFeedsConfig = {

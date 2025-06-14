@@ -82,7 +82,7 @@ export const Channel = co.map({
   softDeleted: z.boolean().optional(),
   
   // Channel type - determines how the channel behaves
-  channelType: z.enum(["chat", "feeds"]).optional().default("chat"),
+  channelType: z.enum(["chat", "feeds", "links"]).optional().default("chat"),
   
   // ATProto feed integration - now used for feeds channels
   isAtprotoFeed: z.boolean().optional(), // For backwards compatibility

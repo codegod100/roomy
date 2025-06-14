@@ -22,6 +22,7 @@
   import CreatePageDialog from "$lib/components/CreatePageDialog.svelte";
   import BoardList from "./BoardList.svelte";
   import ChannelFeedsBoard from "./ChannelFeedsBoard.svelte";
+  import ChannelLinksBoard from "./ChannelLinksBoard.svelte";
   import ToggleNavigation from "./ToggleNavigation.svelte";
   import { AccountCoState, CoState } from "jazz-svelte";
   import { Channel, Space } from "$lib/jazz/schema";
@@ -465,14 +466,16 @@
         title={"Channel"}
       >
         <span class="flex gap-2 items-center">
-          <Icon icon={channel.current.channelType === "feeds" ? "basil:feed-outline" : "basil:comment-solid"} />
+          <Icon icon={channel.current.channelType === "feeds" ? "basil:feed-outline" : channel.current.channelType === "links" ? "basil:link-outline" : "basil:comment-solid"} />
           {channel.current.name}
           {#if channel.current.channelType === "feeds"}
             <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded">FEEDS</span>
+          {:else if channel.current.channelType === "links"}
+            <span class="text-xs bg-secondary/20 text-secondary px-2 py-1 rounded">LINKS</span>
           {/if}
         </span>
       </h4>
-      {#if channel.current.channelType !== "feeds"}
+      {#if channel.current.channelType !== "feeds" && channel.current.channelType !== "links"}
         <Tabs
           items={[
             { name: "chat", onclick: () => (tab = "chat") },
@@ -503,6 +506,11 @@
   <div class="p-4 h-[calc(100dvh-4rem)] overflow-y-auto">
     <ChannelFeedsBoard channel={channel.current} />
   </div>
+{:else if channel.current?.channelType === "links"}
+  <!-- Links Channel - Only show links -->
+  <div class="p-4 h-[calc(100dvh)] overflow-y-auto">
+    <ChannelLinksBoard space={space.current} />
+  </div>
 {:else if tab === "board"}
   <div class="p-4 space-y-6 h-[calc(100dvh-4rem)] overflow-y-auto">
     <BoardList items={pages} title="Pages" route="page">
@@ -531,6 +539,7 @@
           admin={creator.current}
           {threadId}
           allowedToInteract={hasJoinedSpace && !isBanned}
+          {threading}
         />
       </div>
 

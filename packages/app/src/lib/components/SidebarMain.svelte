@@ -14,6 +14,7 @@
     createCategory,
     createChannel,
     createFeedsChannel,
+    createLinksChannel,
     createThread,
     isSpaceAdmin,
     spacePages,
@@ -189,7 +190,7 @@
 
   let showNewChannelDialog = $state(false);
   let newChannelName = $state("");
-  let newChannelType = $state("chat") as "chat" | "feeds";
+  let newChannelType = $state("chat") as "chat" | "feeds" | "links";
   let newChannelCategory = $state(undefined) as
     | undefined
     | co.loaded<typeof Category>;
@@ -202,6 +203,8 @@
 
     const channel = newChannelType === "feeds" 
       ? createFeedsChannel(newChannelName, selectedFeeds)
+      : newChannelType === "links"
+      ? createLinksChannel(newChannelName)
       : createChannel(newChannelName, newChannelType);
 
     space.current?.channels?.push(channel);
@@ -300,6 +303,7 @@
             <select bind:value={newChannelType}>
               <option value="chat">💬 Chat Channel</option>
               <option value="feeds">📡 Feeds Channel</option>
+              <option value="links">🔗 Links Channel</option>
             </select>
           </label>
           {#if newChannelType === "feeds"}
@@ -307,7 +311,13 @@
               <Icon icon="information-circle" class="inline mr-1" />
               This channel will automatically display AT Proto feed posts instead of regular chat messages.
             </div>
-            
+          {:else if newChannelType === "links"}
+            <div class="text-sm text-base-content/70 p-2 bg-base-200 rounded">
+              <Icon icon="information-circle" class="inline mr-1" />
+              This channel will automatically discover and display all links shared across channels in this space.
+            </div>
+          {/if}
+          {#if newChannelType === "feeds"}
             <div class="space-y-3">
               <h3 class="text-sm font-semibold">Select Feeds</h3>
               
@@ -383,10 +393,10 @@
               {/each}
             </select>
           </label>
-            <Button type="submit" class="w-full justify-start">
-              <Icon icon="basil:add-outline" font-size="1.8em" />
-              Create {newChannelType === "feeds" ? "Feeds" : "Chat"} Channel
-            </Button>
+          <Button type="submit" class="w-full justify-start">
+            <Icon icon="basil:add-outline" font-size="1.8em" />
+            Create {newChannelType === "feeds" ? "Feeds" : newChannelType === "links" ? "Links" : "Chat"} Channel
+          </Button>
           </form>
         </div>
       </Dialog>

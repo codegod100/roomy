@@ -2,7 +2,7 @@
   import { page } from "$app/state";
   import { navigate } from "$lib/utils.svelte";
   import Icon from "@iconify/svelte";
-  import { Popover, Button } from "bits-ui";
+  import { Button } from "@fuxui/base";
   import Dialog from "$lib/components/Dialog.svelte";
   import { toast } from "svelte-french-toast";
   import { threading } from "./TimelineView.svelte";
@@ -304,46 +304,54 @@
 </script>
 
 <menu class="relative flex items-center gap-3 px-2 w-fit justify-end">
-  <Popover.Root bind:open={threading.active}>
-    <Popover.Trigger>
-      <Icon icon="tabler:needle-thread" class="text-2xl" />
-    </Popover.Trigger>
-    <Popover.Portal>
-      <Popover.Content
-        side="left"
-        sideOffset={16}
-        interactOutsideBehavior="ignore"
-        class="my-4 bg-base-300 rounded py-4 px-5 max-w-[300px] w-full"
-      >
-        <div class="flex flex-col gap-4">
-          <div class="flex justify-between items-center">
-            <h2 class="text-xl font-bold">Create Thread</h2>
-            <Popover.Close>
-              <Icon icon="lucide:x" class="text-2xl" />
-            </Popover.Close>
-          </div>
-          <p class="text-sm text-base-content">
-            Threads are a way to organize messages in a channel. Select as many
-            messages as you want and join them into a new thread.
-          </p>
-          <form onsubmit={createThread} class="flex flex-col gap-4">
-            <input
-              type="text"
-              bind:value={threadTitleInput}
-              class="dz-input"
-              placeholder="Thread Title"
-              required
-            />
-            <button type="submit" class="dz-btn dz-btn-primary">
-              Create Thread
-            </button>
-          </form>
-        </div>
-      </Popover.Content>
-    </Popover.Portal>
-  </Popover.Root>
+  <!-- Threading needle button -->
+  <button 
+    type="button"
+    onclick={() => {
+      threading.active = !threading.active;
+      if (!threading.active) {
+        threading.selectedMessages = [];
+      }
+    }}
+    class="p-2 hover:bg-base-200 rounded-lg transition-colors {threading.active ? 'bg-primary text-primary-content' : ''}"
+    title="Create Thread"
+  >
+    <Icon icon="tabler:needle-thread" class="text-2xl" />
+  </button>
 
-  <Button.Root
+  <!-- Threading dialog -->
+  {#if threading.active}
+    <div class="fixed top-20 left-4 z-[100] bg-base-300 rounded-lg p-6 max-w-sm w-80 shadow-2xl border border-base-200">
+      <div class="flex flex-col gap-4">
+        <div class="flex justify-between items-center">
+          <h2 class="text-xl font-bold">Create Thread</h2>
+          <button onclick={() => {
+            threading.active = false;
+            threading.selectedMessages = [];
+          }} class="hover:bg-base-200 p-1 rounded">
+            <Icon icon="lucide:x" class="text-lg" />
+          </button>
+        </div>
+        <p class="text-sm text-base-content">
+          Select messages below by clicking their checkboxes, then create a thread.
+        </p>
+        <form onsubmit={createThread} class="flex flex-col gap-4">
+          <input
+            type="text"
+            bind:value={threadTitleInput}
+            class="dz-input"
+            placeholder="Thread Title"
+            required
+          />
+          <button type="submit" class="dz-btn dz-btn-primary">
+            Create Thread ({threading.selectedMessages.length} messages)
+          </button>
+        </form>
+      </div>
+    </div>
+  {/if}
+
+  <Button
     title="Copy invite link"
     onclick={() => {
       navigator.clipboard.writeText(`${page.url.href}`);
@@ -351,7 +359,7 @@
     }}
   >
     <Icon icon="icon-park-outline:people-plus" class="text-2xl" />
-  </Button.Root>
+  </Button>
 
   {#if isSpaceAdmin(space.current)}
     <Dialog
@@ -361,14 +369,14 @@
       bind:isDialogOpen={showSettingsDialog}
     >
       {#snippet dialogTrigger()}
-        <Button.Root
+        <Button
           title={thread.current
           ? "Thread Settings"
           : "Channel Settings"}
           class="m-auto flex"
         >
           <Icon icon="lucide:settings" class="text-2xl" />
-        </Button.Root>
+        </Button>
       {/snippet}
 
       <div class="max-h-[80vh] overflow-y-auto">
@@ -424,13 +432,13 @@
               <div class="flex items-center gap-2">
                 <input type="checkbox" checked disabled class="checkbox checkbox-sm" />
                 <span class="text-sm flex-1 truncate">{customUri}</span>
-                <Button.Root
+                <Button
                   type="button"
                   onclick={() => removeFeed(customUri)}
                   class="dz-btn dz-btn-ghost dz-btn-sm text-error hover:bg-error/10"
                 >
                   <Icon icon="tabler:x" class="size-3" />
-                </Button.Root>
+                </Button>
               </div>
             {/each}
             
@@ -444,14 +452,14 @@
                   placeholder="https://bsky.app/profile/did:plc:example/feed/feedname or at://..."
                   class="dz-input flex-1 text-xs"
                 />
-                <Button.Root
+                <Button
                   type="button"
                   onclick={addCustomFeed}
                   disabled={!customFeedInput}
                   class="dz-btn dz-btn-secondary dz-btn-sm"
                 >
                   Add
-                </Button.Root>
+                </Button>
               </div>
               <p class="text-xs text-base-content/60">
                 Accepts both Bluesky URLs and AT:// URIs
@@ -551,7 +559,7 @@
             {/if}
           </div>
         {/if}
-          <Button.Root class="dz-btn dz-btn-primary">Save Settings</Button.Root>
+          <Button class="dz-btn dz-btn-primary">Save Settings</Button>
         </form>
       </div>
 
@@ -571,9 +579,8 @@
           Deleting a {channel.current ? "channel" : "thread"} doesn't delete
           the data permanently, it just hides the thread from the UI.
         </p>
-        <Button.Root class="dz-btn dz-btn-error"
-          >Delete {channel.current ? "Channel" : "Thread"}</Button.Root
-        >
+        <Button class="dz-btn dz-btn-error"
+          >Delete {channel.current ? "Channel" : "Thread"}</Button>
       </form>
     </Dialog>
   {/if}
