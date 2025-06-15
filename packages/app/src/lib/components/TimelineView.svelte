@@ -479,56 +479,59 @@
   <div class="absolute top-0 left-0"></div>
 {/if}
 
-<Navbar>
-  <div class="flex gap-4 items-center ml-4">
-    {#if channel.current}
-      <ToggleNavigation />
+<div class="flex flex-col h-full overflow-hidden">
+<div class="flex-none bg-base-50 border-b border-base-400/30 dark:border-base-300/10">
+  <Navbar>
+    <div class="flex gap-4 items-center ml-4">
+      {#if channel.current}
+        <ToggleNavigation />
 
-      <h4
-        class="sm:line-clamp-1 sm:overflow-hidden sm:text-ellipsis text-lg font-bold"
-        title={"Channel"}
-      >
-        <span class="flex gap-2 items-center">
-          <Icon icon={channel.current.channelType === "feeds" ? "basil:feed-outline" : "basil:comment-solid"} />
-          {channel.current.name}
-          {#if channel.current.channelType === "feeds"}
-            <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded">FEEDS</span>
-          {/if}
-        </span>
-      </h4>
-      {#if channel.current.channelType !== "feeds"}
-        <Tabs
-          items={[
-            { name: "chat", onclick: () => (tab = "chat") },
-            { name: "board", onclick: () => (tab = "board") },
-          ]}
-          active={tab}
-        ></Tabs>
+        <h4
+          class="sm:line-clamp-1 sm:overflow-hidden sm:text-ellipsis text-lg font-bold"
+          title={"Channel"}
+        >
+          <span class="flex gap-2 items-center">
+            <Icon icon={channel.current.channelType === "feeds" ? "basil:feed-outline" : "basil:comment-solid"} />
+            {channel.current.name}
+            {#if channel.current.channelType === "feeds"}
+              <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded">FEEDS</span>
+            {/if}
+          </span>
+        </h4>
+        {#if channel.current.channelType !== "feeds"}
+          <Tabs
+            items={[
+              { name: "chat", onclick: () => (tab = "chat") },
+              { name: "board", onclick: () => (tab = "board") },
+            ]}
+            active={tab}
+          ></Tabs>
+        {/if}
       {/if}
-    {/if}
-  </div>
+    </div>
 
-  <div class="hidden sm:flex dz-navbar-end items-center gap-2">
-    {#if tab === "chat"}
-      <button
-        class="btn btn-ghost btn-sm btn-circle"
-        onclick={() => (showSearch = !showSearch)}
-        title="Toggle search"
-      >
-        <Icon icon="tabler:search" class="text-base-content" />
-      </button>
-    {/if}
-    <TimelineToolbar createThread={addThread} bind:threadTitleInput />
-  </div>
-</Navbar>
+    <div class="hidden sm:flex dz-navbar-end items-center gap-2">
+      {#if tab === "chat"}
+        <button
+          class="btn btn-ghost btn-sm btn-circle"
+          onclick={() => (showSearch = !showSearch)}
+          title="Toggle search"
+        >
+          <Icon icon="tabler:search" class="text-base-content" />
+        </button>
+      {/if}
+      <TimelineToolbar createThread={addThread} bind:threadTitleInput />
+    </div>
+  </Navbar>
+</div>
 
 {#if channel.current?.channelType === "feeds"}
   <!-- Feeds Channel - Only show feeds -->
-  <div class="p-4 h-[calc(100dvh-4rem)] overflow-y-auto">
+  <div class="flex-1 overflow-y-auto p-4">
     <ChannelFeedsBoard channel={channel.current} />
   </div>
 {:else if tab === "board"}
-  <div class="p-4 space-y-6 h-[calc(100dvh-4rem)] overflow-y-auto">
+  <div class="flex-1 overflow-y-auto p-4 space-y-6">
     <BoardList items={pages} title="Pages" route="page">
       {#snippet header()}
         <CreatePageDialog />
@@ -543,11 +546,13 @@
   </div>
 {:else if tab === "chat"}
   {#if space.current}
-    <div class="flex flex-col h-[calc(100dvh-4rem)] w-full px-4">
+    <div class="flex flex-col flex-1 overflow-hidden px-4">
       {#if showSearch && space.current}
-        <SearchBar spaceId={space.current.id} bind:showSearch />
+        <div class="flex-none">
+          <SearchBar spaceId={space.current.id} bind:showSearch />
+        </div>
       {/if}
-      <div class="flex-grow overflow-auto relative h-full pb-20">
+      <div class="flex-1 overflow-y-auto overflow-x-hidden relative">
         <ChatArea
           space={space.current}
           {timeline}
@@ -558,7 +563,7 @@
         />
       </div>
 
-      <div class="fixed bottom-2 left-2 sm:left-84 right-2">
+      <div class="flex-none p-2">
         {#if replyTo.id}
           <div
             class="flex justify-between bg-secondary text-secondary-content rounded-t-lg px-4 py-2"
@@ -668,3 +673,4 @@
     </div>
   {/if}
 {/if}
+</div>

@@ -211,12 +211,12 @@
 
 <div
   class={[
-    page.url.pathname === "/messages" ? "ml-24" : "",
-    isSidebarVisible.value || true
-      ? "sm:ml-84 z-40 bg-white shadow-lg border-l border-base-800/20 relative"
+    page.url.pathname === "/messages" ? "ml-20" : "",
+    page.params.space && page.url.pathname !== "/messages"
+      ? "sm:ml-84 z-40 bg-white shadow-lg border-l border-base-800/20"
       : "",
-    "relative",
-  ]}
+    "h-screen overflow-hidden relative",
+  ].filter(Boolean).join(" ")}
 >
   {@render children()}
 </div>

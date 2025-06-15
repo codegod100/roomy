@@ -46,7 +46,7 @@
       </Button>
 
       <!-- Messages Button -->
-      <!-- <Button
+      <Button
         href="/messages"
         variant="link"
         data-current={page.url.pathname.startsWith("/messages")}
@@ -54,7 +54,7 @@
         title="Direct Messages"
       >
         <Icon icon="tabler:mail" font-size="1.75em" />
-      </Button> -->
+      </Button>
 
       {#if me?.profile?.blueskyHandle}
         <CreateSpaceModal {me} bind:open={isNewSpaceDialogOpen} />
