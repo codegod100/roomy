@@ -491,7 +491,7 @@
 </Navbar>
 
 {#if tab === "board"}
-  <div class="p-4 space-y-6 h-[calc(100dvh)] overflow-y-auto">
+  <div class="p-4 space-y-6 h-[calc(100dvh-4rem)] pt-20 overflow-y-auto">
     <BoardList items={pages} title="Pages" route="page">
       {#snippet header()}
         <CreatePageDialog />
