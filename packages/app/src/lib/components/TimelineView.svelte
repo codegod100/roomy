@@ -41,6 +41,7 @@
   import UploadFileButton from "./helper/UploadFileButton.svelte";
   import { afterNavigate } from "$app/navigation";
   import SearchBar from "./search/SearchBar.svelte";
+  import { indexNewMessages } from "./search/search.svelte";
   import Navbar from "./ui/Navbar.svelte";
   import { Tabs } from "@fuxui/base";
 
@@ -103,9 +104,35 @@
     typeof window !== 'undefined' && window.location.hash === '#board' ? 'board' : 'chat'
   );
 
+  // Index new messages when timeline changes
+  $effect(() => {
+    if (timeline && timeline.length > 0 && space.current) {
+      if (page.params.channel && channel.current) {
+        indexNewMessages(
+          space.current.id,
+          timeline,
+          channel.current.id,
+          channel.current.name
+        ).catch(error => console.error("Error indexing new messages:", error));
+      } else if (page.params.thread && thread.current) {
+        indexNewMessages(
+          space.current.id,
+          timeline,
+          undefined,
+          undefined,
+          thread.current.id,
+          thread.current.name
+        ).catch(error => console.error("Error indexing new messages:", error));
+      }
+    }
+  });
+
   // Update tab when hash changes
   $effect(() => {
     const handleHashChange = () => {
+      // For feeds channels, don't change tabs based on hash
+      if (channel.current?.channelType === "feeds") return;
+      
       if (window.location.hash === '#board') {
         tab = 'board';
       } else if (window.location.hash === '#chat') {
@@ -462,17 +489,22 @@
         title={"Channel"}
       >
         <span class="flex gap-2 items-center">
-          <Icon icon={"basil:comment-solid"} />
+          <Icon icon={channel.current.channelType === "feeds" ? "basil:feed-outline" : "basil:comment-solid"} />
           {channel.current.name}
+          {#if channel.current.channelType === "feeds"}
+            <span class="text-xs bg-primary/20 text-primary px-2 py-1 rounded">FEEDS</span>
+          {/if}
         </span>
       </h4>
-      <Tabs
-        items={[
-          { name: "chat", onclick: () => (tab = "chat") },
-          { name: "board", onclick: () => (tab = "board") },
-        ]}
-        active={tab}
-      ></Tabs>
+      {#if channel.current.channelType !== "feeds"}
+        <Tabs
+          items={[
+            { name: "chat", onclick: () => (tab = "chat") },
+            { name: "board", onclick: () => (tab = "board") },
+          ]}
+          active={tab}
+        ></Tabs>
+      {/if}
     {/if}
   </div>
 
@@ -490,8 +522,13 @@
   </div>
 </Navbar>
 
-{#if tab === "board"}
-  <div class="p-4 space-y-6 h-[calc(100dvh)] overflow-y-auto">
+{#if channel.current?.channelType === "feeds"}
+  <!-- Feeds Channel - Only show feeds -->
+  <div class="p-4 h-[calc(100dvh-4rem)] overflow-y-auto">
+    <ChannelFeedsBoard channel={channel.current} />
+  </div>
+{:else if tab === "board"}
+  <div class="p-4 space-y-6 h-[calc(100dvh-4rem)] overflow-y-auto">
     <BoardList items={pages} title="Pages" route="page">
       {#snippet header()}
         <CreatePageDialog />
@@ -506,11 +543,11 @@
   </div>
 {:else if tab === "chat"}
   {#if space.current}
-    <div class="flex flex-col h-[calc(100dvh)] py-16 w-full px-4">
+    <div class="flex flex-col h-[calc(100dvh-4rem)] w-full px-4">
       {#if showSearch && space.current}
         <SearchBar spaceId={space.current.id} bind:showSearch />
       {/if}
-      <div class="flex-grow overflow-auto relative h-full">
+      <div class="flex-grow overflow-auto relative h-full pb-20">
         <ChatArea
           space={space.current}
           {timeline}
